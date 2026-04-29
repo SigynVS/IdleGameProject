@@ -40,13 +40,14 @@ func _on_inventory_updated():
 			
 		inventory_label.text = text
 	
-	# Refresh Skill HUD
+	# Refresh Skill HUD with XP progress
 	if skill_label:
-		var s_text = "Skills:\n"
+		var s_text = ""
 		for skill in GameData.skills.keys():
 			var level = GameData.skills[skill]["level"]
-			# Using capitalize() makes 'woodcutting' look like 'Woodcutting'
-			s_text += skill.capitalize() + " Lvl: " + str(level) + "\n"
+			var xp = GameData.skills[skill]["xp"]
+			var xp_required = level * GameData.base_xp_to_level
+			s_text += skill.capitalize() + " Lvl: " + str(level) + "  |  XP: " + str(xp) + "/" + str(xp_required) + "\n"
 		skill_label.text = s_text
 	
 	_update_trade_preview()

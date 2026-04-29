@@ -57,10 +57,10 @@ offset_bottom = 38.0
 text = "Gold: 0"
 
 [node name="SkillLabel" type="Label" parent="GameUI" unique_id=120786294]
-offset_left = 924.0
+offset_left = 800.0
 offset_top = 3.0
-offset_right = 1063.0
-offset_bottom = 52.0
+offset_right = 1200.0
+offset_bottom = 63.0
 text = "Woodcutting Lv: 1
 Mining Lv:1"
 
@@ -84,10 +84,10 @@ anchor_left = 0.637
 anchor_top = 0.046000004
 anchor_right = 0.637
 anchor_bottom = 0.046000004
-offset_left = 85.175964
-offset_top = -21.808002
-offset_right = 164.17596
-offset_bottom = 21.191994
+offset_left = -130.82404
+offset_top = -20.808002
+offset_right = -51.824036
+offset_bottom = 22.191994
 
 [node name="rock" parent="." unique_id=897744711 instance=ExtResource("5_tefeu")]
 position = Vector2(-16, -2)
