@@ -1,3 +1,2 @@
 res://scenes/main.tscn
-res://scripts/GameData.gd
-res://scripts/SnippetDB.gd
+res://scripts/ui.gd
