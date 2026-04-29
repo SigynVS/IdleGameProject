@@ -29,6 +29,10 @@ var skills: Dictionary = {
 	}
 }
 
+func _ready():
+	await get_tree().process_frame
+	load_game()
+
 func add_xp(skill_name: String, amount: int):
 	if skills.has(skill_name):
 		skills[skill_name]["xp"] += amount
@@ -39,6 +43,8 @@ func add_xp(skill_name: String, amount: int):
 			skills[skill_name]["level"] += 1
 			xp_required = skills[skill_name]["level"] * base_xp_to_level
 			print("⭐ LEVEL UP: ", skill_name, " is now level ", skills[skill_name]["level"])
+		
+		save_game()
 	else:
 		print("Error: Skill ", skill_name, " doesn't exist.")
 
@@ -67,4 +73,23 @@ func sell_all_items():
 func add_gold(amount: int):
 	gold += amount
 	gold_updated.emit()
+	save_game()
 	print("💰 Gold: ", gold)
+
+func save_game():
+	SnippetDB.save_player_data(gold, skills)
+	print("💾 Game Saved!")
+
+func load_game():
+	var data = SnippetDB.load_player_data()
+	if data.is_empty():
+		print("📂 No save data found, starting fresh.")
+		return
+	gold = data["gold"]
+	skills["mining"]["xp"] = data["mining_xp"]
+	skills["mining"]["level"] = data["mining_level"]
+	skills["woodcutting"]["xp"] = data["woodcutting_xp"]
+	skills["woodcutting"]["level"] = data["woodcutting_level"]
+	gold_updated.emit()
+	inventory_updated.emit()
+	print("📂 Game Loaded! Gold: ", gold)

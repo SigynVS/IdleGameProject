@@ -54,6 +54,25 @@ func search(query: String) -> Array:
 	db.query_with_bindings(sql, [param, param, param])
 	return db.query_result.duplicate()
 
+func save_player_data(gold: int, skills: Dictionary) -> void:
+	db.query("CREATE TABLE IF NOT EXISTS player_data (id INTEGER PRIMARY KEY, gold INTEGER, mining_xp INTEGER, mining_level INTEGER, woodcutting_xp INTEGER, woodcutting_level INTEGER);")
+	db.query("DELETE FROM player_data;")
+	var sql = "INSERT INTO player_data (id, gold, mining_xp, mining_level, woodcutting_xp, woodcutting_level) VALUES (1, ?, ?, ?, ?, ?)"
+	db.query_with_bindings(sql, [
+		gold,
+		skills["mining"]["xp"],
+		skills["mining"]["level"],
+		skills["woodcutting"]["xp"],
+		skills["woodcutting"]["level"]
+	])
+
+func load_player_data() -> Dictionary:
+	db.query("CREATE TABLE IF NOT EXISTS player_data (id INTEGER PRIMARY KEY, gold INTEGER, mining_xp INTEGER, mining_level INTEGER, woodcutting_xp INTEGER, woodcutting_level INTEGER);")
+	db.query("SELECT * FROM player_data WHERE id = 1;")
+	if db.query_result.size() > 0:
+		return db.query_result[0]
+	return {}
+
 func _exit_tree() -> void:
 	if db:
 		db.close_db()
