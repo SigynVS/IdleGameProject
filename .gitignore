@@ -25,3 +25,6 @@ desktop.ini             # Windows folder settings
 
 # --- System & Tooling ---
 *.log                   # Any error logs created during crashes
+
+.godot/editor/editor_script_doc_cache.res
+.godot/editor/filesystem_cache10
