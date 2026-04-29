@@ -2,10 +2,13 @@ extends CanvasLayer
 
 # --- Node References ---
 @onready var gold_label = $GoldLabel
-@onready var skill_label = $SkillLabel
+@onready var mining_label = $MiningLabel
+@onready var woodcutting_label = $WoodcuttingLabel
 @onready var inventory_label = $InventoryLabel
 @onready var sell_label = $SellBag
 @onready var sell_button = $Trade
+@onready var mining_xp_bar = $MiningXPBar
+@onready var woodcutting_xp_bar = $WoodcuttingXPBar
 
 func _ready():
 	# Connect to Global Data signals
@@ -40,17 +43,38 @@ func _on_inventory_updated():
 			
 		inventory_label.text = text
 	
-	# Refresh Skill HUD with XP progress
-	if skill_label:
-		var s_text = ""
-		for skill in GameData.skills.keys():
-			var level = GameData.skills[skill]["level"]
-			var xp = GameData.skills[skill]["xp"]
-			var xp_required = level * GameData.base_xp_to_level
-			s_text += skill.capitalize() + " Lvl: " + str(level) + "  |  XP: " + str(xp) + "/" + str(xp_required) + "\n"
-		skill_label.text = s_text
-	
+	# Update skill labels and XP bars
+	_update_xp_bars()
 	_update_trade_preview()
+
+func _update_xp_bars():
+	# Mining
+	if mining_label:
+		var level = GameData.skills["mining"]["level"]
+		var xp = GameData.skills["mining"]["xp"]
+		var xp_required = level * GameData.base_xp_to_level
+		mining_label.text = "Mining Lvl: " + str(level) + "  |  XP: " + str(xp) + "/" + str(xp_required)
+	
+	if mining_xp_bar:
+		var level = GameData.skills["mining"]["level"]
+		var xp = GameData.skills["mining"]["xp"]
+		var xp_required = level * GameData.base_xp_to_level
+		mining_xp_bar.max_value = xp_required
+		mining_xp_bar.value = xp
+
+	# Woodcutting
+	if woodcutting_label:
+		var level = GameData.skills["woodcutting"]["level"]
+		var xp = GameData.skills["woodcutting"]["xp"]
+		var xp_required = level * GameData.base_xp_to_level
+		woodcutting_label.text = "Woodcutting Lvl: " + str(level) + "  |  XP: " + str(xp) + "/" + str(xp_required)
+	
+	if woodcutting_xp_bar:
+		var level = GameData.skills["woodcutting"]["level"]
+		var xp = GameData.skills["woodcutting"]["xp"]
+		var xp_required = level * GameData.base_xp_to_level
+		woodcutting_xp_bar.max_value = xp_required
+		woodcutting_xp_bar.value = xp
 
 func _update_trade_preview():
 	if sell_label:
