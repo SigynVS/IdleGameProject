@@ -1,12 +1,12 @@
 63f7b34db8d8cdea90c76aacccf841ec
-::res://::1777495957
+::res://::1777497905
 ::res://addons/::1777433964
 ::res://addons/godot-sqlite/::1777433964
 gdsqlite.gdextension::GDExtension::4837341577405836572::1777433955::0::1::::<><><>0<>0<><>::
 godot-sqlite.gd::GDScript::6354497535622739150::1777433955::0::1::::<>EditorPlugin<><>0<>1<><>::
 LICENSE.md::TextFile::-1::1777433954::0::1::::<><><>0<>0<><>::
 plugin.cfg::TextFile::-1::1777433955::0::1::::<><><>0<>0<><>::
-::res://addons/godot-sqlite/bin/::1777495958
+::res://addons/godot-sqlite/bin/::1777497901
 ::res://addons/godot-sqlite/bin/libgdsqlite.ios.template_debug.xcframework/::1777433964
 ::res://addons/godot-sqlite/bin/libgdsqlite.ios.template_debug.xcframework/ios-arm64/::1777433964
 ::res://addons/godot-sqlite/bin/libgdsqlite.ios.template_debug.xcframework/ios-arm64_x86_64-simulator/::1777433964
