@@ -1,0 +1,106 @@
+[gd_scene format=3 uid="uid://bon8rldte7ur5"]
+
+[ext_resource type="Texture2D" uid="uid://chyejb137yg8o" path="res://assets/icon.svg" id="1_o5qli"]
+[ext_resource type="Script" uid="uid://8usbu73ddnwm" path="res://scripts/main.gd" id="1_o6xl0"]
+[ext_resource type="Script" uid="uid://cdfxlwlbpe1x3" path="res://scripts/player.gd" id="1_sugp2"]
+[ext_resource type="PackedScene" uid="uid://c7h7abhwnprbd" path="res://scenes/tree.tscn" id="2_0wfyh"]
+[ext_resource type="Script" uid="uid://dldll4mypq3wb" path="res://scripts/ui.gd" id="4_jyhfs"]
+[ext_resource type="PackedScene" uid="uid://bsdm4lonqlkbt" path="res://scenes/rock.tscn" id="5_tefeu"]
+[ext_resource type="Script" uid="uid://br7cbl0u0j2hk" path="res://scripts/rock.gd" id="6_o6xl0"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_4dvvg"]
+radius = 82.0
+height = 176.0
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_tipki"]
+radius = 80.0
+height = 180.0
+
+[node name="Main" type="Node2D" unique_id=570295624]
+scale = Vector2(0.5, 0.5)
+script = ExtResource("1_o6xl0")
+
+[node name="Player" type="CharacterBody2D" parent="." unique_id=796991776 groups=["player_group"]]
+process_mode = 3
+script = ExtResource("1_sugp2")
+
+[node name="Sprite2D" type="Sprite2D" parent="Player" unique_id=1337794941]
+position = Vector2(182, 178)
+texture = ExtResource("1_o5qli")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player" unique_id=441910126]
+position = Vector2(185, 179)
+shape = SubResource("CapsuleShape2D_4dvvg")
+
+[node name="WorkProgress" type="ProgressBar" parent="Player" unique_id=751237894]
+z_index = 10
+offset_left = 138.0
+offset_top = 80.0
+offset_right = 240.0
+offset_bottom = 107.0
+
+[node name="UIAnchor" type="Marker2D" parent="Player" unique_id=828777586]
+position = Vector2(186, 96)
+
+[node name="Tree" parent="." unique_id=1141422638 instance=ExtResource("2_0wfyh")]
+position = Vector2(174, 176)
+xp_amount = 25
+
+[node name="GameUI" type="CanvasLayer" parent="." unique_id=763868838]
+script = ExtResource("4_jyhfs")
+
+[node name="GoldLabel" type="Label" parent="GameUI" unique_id=1113774546]
+offset_left = 1078.0
+offset_top = 3.0
+offset_right = 1132.0
+offset_bottom = 38.0
+text = "Gold: 0"
+
+[node name="SkillLabel" type="Label" parent="GameUI" unique_id=120786294]
+offset_left = 924.0
+offset_top = 3.0
+offset_right = 1063.0
+offset_bottom = 52.0
+text = "Woodcutting Lv: 1
+Mining Lv:1"
+
+[node name="InventoryLabel" type="Label" parent="GameUI" unique_id=4615836]
+offset_left = 925.0
+offset_top = 80.0
+offset_right = 1025.0
+offset_bottom = 103.0
+
+[node name="SellBag" type="Label" parent="GameUI" unique_id=262746230]
+anchors_preset = -1
+anchor_bottom = 0.018000001
+offset_left = 693.0
+offset_top = 16.0
+offset_right = 752.0
+offset_bottom = 27.335999
+
+[node name="Trade" type="Button" parent="GameUI" unique_id=674180749]
+anchors_preset = -1
+anchor_left = 0.637
+anchor_top = 0.046000004
+anchor_right = 0.637
+anchor_bottom = 0.046000004
+offset_left = 85.175964
+offset_top = -21.808002
+offset_right = 164.17596
+offset_bottom = 21.191994
+
+[node name="rock" parent="." unique_id=897744711 instance=ExtResource("5_tefeu")]
+position = Vector2(-16, -2)
+script = ExtResource("6_o6xl0")
+
+[node name="Sprite2D" type="Sprite2D" parent="rock" unique_id=1570121383]
+position = Vector2(542, 184)
+texture = ExtResource("1_o5qli")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="rock" unique_id=37113767]
+position = Vector2(540, 184)
+shape = SubResource("CapsuleShape2D_tipki")
+
+[connection signal="input_event" from="rock" to="rock" method="_on_input_event"]
+
+[editable path="Tree"]
