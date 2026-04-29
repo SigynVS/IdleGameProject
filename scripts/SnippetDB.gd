@@ -73,6 +73,22 @@ func load_player_data() -> Dictionary:
 		return db.query_result[0]
 	return {}
 
+func save_inventory(inventory: Dictionary) -> void:
+	db.query("CREATE TABLE IF NOT EXISTS inventory_data (item_name TEXT PRIMARY KEY, amount INTEGER);")
+	db.query("DELETE FROM inventory_data;")
+	for item in inventory.keys():
+		if inventory[item] > 0:
+			var sql = "INSERT INTO inventory_data (item_name, amount) VALUES (?, ?)"
+			db.query_with_bindings(sql, [item, inventory[item]])
+
+func load_inventory() -> Dictionary:
+	db.query("CREATE TABLE IF NOT EXISTS inventory_data (item_name TEXT PRIMARY KEY, amount INTEGER);")
+	db.query("SELECT * FROM inventory_data;")
+	var result: Dictionary = {}
+	for row in db.query_result:
+		result[row["item_name"]] = row["amount"]
+	return result
+
 func _exit_tree() -> void:
 	if db:
 		db.close_db()

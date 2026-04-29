@@ -55,6 +55,7 @@ func add_item(item_name: String, amount: int):
 		inventory[item_name] = amount
 	
 	inventory_updated.emit()
+	save_game()
 	print("📦 Collected: ", item_name, " | Total: ", inventory[item_name])
 
 func sell_all_items():
@@ -67,6 +68,7 @@ func sell_all_items():
 	if total_gain > 0:
 		add_gold(total_gain)
 		inventory_updated.emit()
+		save_game()
 	else:
 		print("⚖️ Market: No items to sell.")
 
@@ -78,6 +80,7 @@ func add_gold(amount: int):
 
 func save_game():
 	SnippetDB.save_player_data(gold, skills)
+	SnippetDB.save_inventory(inventory)
 	print("💾 Game Saved!")
 
 func load_game():
@@ -90,6 +93,7 @@ func load_game():
 	skills["mining"]["level"] = data["mining_level"]
 	skills["woodcutting"]["xp"] = data["woodcutting_xp"]
 	skills["woodcutting"]["level"] = data["woodcutting_level"]
+	inventory = SnippetDB.load_inventory()
 	gold_updated.emit()
 	inventory_updated.emit()
-	print("📂 Game Loaded! Gold: ", gold)
+	print("📂 Game Loaded! Gold: ", gold, " | Inventory items: ", inventory.size())
