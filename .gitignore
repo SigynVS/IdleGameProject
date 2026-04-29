@@ -1,0 +1,27 @@
+# --- Godot 4 Core Ignores ---
+.godot/                 # Contains local cache and imported assets
+.import/                # Older Godot import folder (keep for safety)
+export.cfg              # Local export configurations
+export_presets.cfg      # Specific export settings (optional to ignore)
+.nomedia                # Prevents mobile galleries from scanning assets
+
+# --- SQLite & Database Ignores ---
+# These keep your save data clean and prevent sync conflicts
+*.db-shm                # SQLite temporary shared memory
+*.db-wal                # SQLite write-ahead log (temporary data)
+*.db-journal            # SQLite rollback journal
+
+# --- Mono / C# Ignores ---
+# Even if you use GDScript, Godot sometimes generates these
+.mono/
+data_*/
+mono_crash.*.json
+[build-name].pck
+
+# --- OS Specific "Trash" ---
+.DS_Store               # macOS hidden files
+Thumbs.db               # Windows thumbnail cache
+desktop.ini             # Windows folder settings
+
+# --- System & Tooling ---
+*.log                   # Any error logs created during crashes

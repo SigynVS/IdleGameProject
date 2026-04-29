@@ -1,0 +1,24 @@
+[gd_scene format=3 uid="uid://c7h7abhwnprbd"]
+
+[ext_resource type="Script" uid="uid://2clfe28fkxdv" path="res://scripts/tree.gd" id="1_vplca"]
+[ext_resource type="Texture2D" uid="uid://chyejb137yg8o" path="res://assets/icon.svg" id="2_viusy"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_0wfyh"]
+radius = 76.0
+height = 152.0
+
+[node name="Tree" type="Area2D" unique_id=1141422638]
+script = ExtResource("1_vplca")
+xp_amount = 100
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=2037439943]
+position = Vector2(177, 7)
+texture = ExtResource("2_viusy")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1281610423]
+position = Vector2(179, 5)
+shape = SubResource("CapsuleShape2D_0wfyh")
+
+[node name="Timer" type="Timer" parent="." unique_id=267795615]
+
+[connection signal="input_event" from="." to="." method="_on_input_event"]

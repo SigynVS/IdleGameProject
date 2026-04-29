@@ -1,0 +1,33 @@
+CREATE TABLE IF NOT EXISTS snippet (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	title TEXT NOT NULL UNIQUE,
+	code TEXT NOT NULL,
+	language TEXT DEFAULT 'GDScript',
+	godot_version TEXT DEFAULT '4.x',
+	description TEXT,
+	category TEXT,
+	is_favorite INTEGER DEFAULT 0,
+	use_count INTEGER DEFAULT 0,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tag (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name TEXT NOT NULL UNIQUE,
+	color_hex TEXT DEFAULT '#888888'
+);
+
+CREATE TABLE IF NOT EXISTS snippet_tag (
+	snippet_id INTEGER,
+	tag_id INTEGER,
+	PRIMARY KEY (snippet_id, tag_id),
+	FOREIGN KEY (snippet_id) REFERENCES snippet(id) ON DELETE CASCADE,
+	FOREIGN KEY (tag_id) REFERENCES tag(id) ON DELETE CASCADE
+);
+
+CREATE TRIGGER IF NOT EXISTS update_snippet_timestamp 
+AFTER UPDATE ON snippet
+BEGIN
+	UPDATE snippet SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
