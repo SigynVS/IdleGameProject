@@ -20,6 +20,14 @@ config/icon="res://assets/icon.svg"
 GameData="*uid://bep6uwfphvxrl"
 SnippetDB="*uid://c45ai0w8n2egb"
 
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=6
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/godot-sqlite/plugin.cfg")
