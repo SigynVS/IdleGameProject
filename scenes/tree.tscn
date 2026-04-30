@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://c7h7abhwnprbd"]
 
 [ext_resource type="Script" uid="uid://2clfe28fkxdv" path="res://scripts/tree.gd" id="1_vplca"]
-[ext_resource type="Texture2D" uid="uid://chyejb137yg8o" path="res://assets/icon.svg" id="2_viusy"]
+[ext_resource type="Texture2D" uid="uid://ci4ye156wlfoc" path="res://assets/Size_03.png" id="2_vplca"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_0wfyh"]
 radius = 76.0
@@ -12,11 +12,13 @@ script = ExtResource("1_vplca")
 xp_amount = 100
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=2037439943]
-position = Vector2(177, 7)
-texture = ExtResource("2_viusy")
+position = Vector2(205, 115)
+texture = ExtResource("2_vplca")
+region_enabled = true
+region_rect = Rect2(0, 0, 47.536057, 95.74599)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1281610423]
-position = Vector2(179, 5)
+position = Vector2(205, 118)
 shape = SubResource("CapsuleShape2D_0wfyh")
 
 [node name="Timer" type="Timer" parent="." unique_id=267795615]

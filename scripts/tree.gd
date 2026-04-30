@@ -4,7 +4,6 @@ extends Area2D
 @export var skill_type: String = "woodcutting"
 @export var xp_amount: int = 25
 @export var chop_time: float = 3.0 
-@export var reach_distance: float = 125.0
 @export var item_given: String = "Wood"
 
 # --- State ---
@@ -16,7 +15,6 @@ func _ready():
 	GameData.auto_skill_changed.connect(_on_auto_skill_changed)
 
 func _on_auto_skill_changed(active_station):
-	# If another station became active, stop our auto mode
 	if active_station != self and auto_mode:
 		auto_mode = false
 		print("🌲 Tree auto-skill stopped - another station is active")
@@ -25,14 +23,9 @@ func _on_input_event(_viewport, event, _shape_idx):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var player = get_tree().get_first_node_in_group("player_group")
 		if not player:
+			print("❌ Player not found in player_group!")
 			return
 		
-		var dist = global_position.distance_to(player.global_position)
-		if dist >= reach_distance:
-			print("Too far from tree! Distance: ", int(dist))
-			return
-		
-		# Toggle auto mode
 		if auto_mode:
 			auto_mode = false
 			print("🌲 Tree auto-skill OFF")
@@ -62,7 +55,6 @@ func start_chopping(player):
 	is_chopping = false
 	print("✅ Tree chopped!")
 	
-	# Auto loop
 	if auto_mode:
 		var p = get_tree().get_first_node_in_group("player_group")
 		if p:
