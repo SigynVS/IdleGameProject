@@ -7,21 +7,39 @@ extends Area2D
 @export var item_given: String = "Copper Ore"
 
 var is_mining = false
+var auto_mode = false
 
 func _ready():
 	input_pickable = true
+	GameData.auto_skill_changed.connect(_on_auto_skill_changed)
+
+func _on_auto_skill_changed(active_station):
+	if active_station != self and auto_mode:
+		auto_mode = false
+		print("🪨 Rock auto-skill stopped - another station is active")
 
 func _on_input_event(_viewport, event, _shape_idx):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if is_mining: return
-		
 		var player = get_tree().get_first_node_in_group("player_group")
-		if player:
-			var dist = global_position.distance_to(player.global_position)
-			if dist < reach_distance:
+		if not player:
+			return
+		
+		var dist = global_position.distance_to(player.global_position)
+		if dist >= reach_distance:
+			print("Too far from rock! Distance: ", dist)
+			return
+		
+		# Toggle auto mode
+		if auto_mode:
+			auto_mode = false
+			print("🪨 Rock auto-skill OFF")
+			GameData.auto_skill_changed.emit(null)
+		else:
+			auto_mode = true
+			print("🪨 Rock auto-skill ON")
+			GameData.auto_skill_changed.emit(self)
+			if not is_mining:
 				start_mining(player)
-			else:
-				print("Too far from rock! Distance: ", dist)
 
 func start_mining(player):
 	is_mining = true
@@ -35,3 +53,9 @@ func start_mining(player):
 		GameData.add_item(item_given, 1)
 	
 	is_mining = false
+	
+	# Auto loop
+	if auto_mode:
+		var p = get_tree().get_first_node_in_group("player_group")
+		if p:
+			start_mining(p)
