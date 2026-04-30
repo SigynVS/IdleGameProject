@@ -11,6 +11,9 @@ extends CanvasLayer
 @onready var woodcutting_xp_bar = $WoodcuttingXPBar
 
 func _ready():
+	# Style the XP bars
+	_style_xp_bars()
+	
 	# Connect to Global Data signals
 	if GameData:
 		GameData.gold_updated.connect(_on_gold_updated)
@@ -20,6 +23,43 @@ func _ready():
 	# Connect the "Trade" button
 	if sell_button:
 		sell_button.pressed.connect(_on_trade_pressed)
+
+func _style_xp_bars():
+	# Mining bar - blue
+	if mining_xp_bar:
+		var mining_style = StyleBoxFlat.new()
+		mining_style.bg_color = Color(0.2, 0.5, 1.0)  # Blue
+		mining_style.corner_radius_top_left = 4
+		mining_style.corner_radius_top_right = 4
+		mining_style.corner_radius_bottom_left = 4
+		mining_style.corner_radius_bottom_right = 4
+		mining_xp_bar.add_theme_stylebox_override("fill", mining_style)
+		
+		var mining_bg = StyleBoxFlat.new()
+		mining_bg.bg_color = Color(0.1, 0.1, 0.2)  # Dark blue background
+		mining_bg.corner_radius_top_left = 4
+		mining_bg.corner_radius_top_right = 4
+		mining_bg.corner_radius_bottom_left = 4
+		mining_bg.corner_radius_bottom_right = 4
+		mining_xp_bar.add_theme_stylebox_override("background", mining_bg)
+
+	# Woodcutting bar - green
+	if woodcutting_xp_bar:
+		var wc_style = StyleBoxFlat.new()
+		wc_style.bg_color = Color(0.2, 0.8, 0.3)  # Green
+		wc_style.corner_radius_top_left = 4
+		wc_style.corner_radius_top_right = 4
+		wc_style.corner_radius_bottom_left = 4
+		wc_style.corner_radius_bottom_right = 4
+		woodcutting_xp_bar.add_theme_stylebox_override("fill", wc_style)
+		
+		var wc_bg = StyleBoxFlat.new()
+		wc_bg.bg_color = Color(0.05, 0.15, 0.05)  # Dark green background
+		wc_bg.corner_radius_top_left = 4
+		wc_bg.corner_radius_top_right = 4
+		wc_bg.corner_radius_bottom_left = 4
+		wc_bg.corner_radius_bottom_right = 4
+		woodcutting_xp_bar.add_theme_stylebox_override("background", wc_bg)
 
 func _on_trade_pressed():
 	GameData.sell_all_items()
