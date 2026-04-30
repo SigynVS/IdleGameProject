@@ -50,8 +50,12 @@ xp_amount = 25
 script = ExtResource("4_jyhfs")
 
 [node name="TopBar" type="PanelContainer" parent="GameUI" unique_id=1331272317]
-offset_right = 40.0
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -40.0
 offset_bottom = 40.0
+grow_horizontal = 0
 
 [node name="TopBarContent" type="HBoxContainer" parent="GameUI/TopBar" unique_id=1099559771]
 layout_mode = 2
@@ -70,7 +74,7 @@ anchor_right = 0.61800003
 anchor_bottom = 0.042000003
 offset_left = -658.44006
 offset_top = 148.35999
-offset_right = -308.44006
+offset_right = -320.44006
 offset_bottom = 291.36
 current_tab = 0
 
