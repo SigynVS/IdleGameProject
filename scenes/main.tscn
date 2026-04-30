@@ -49,63 +49,99 @@ xp_amount = 25
 [node name="GameUI" type="CanvasLayer" parent="." unique_id=763868838]
 script = ExtResource("4_jyhfs")
 
-[node name="GoldLabel" type="Label" parent="GameUI" unique_id=1113774546]
-offset_left = 945.0
-offset_right = 999.0
-offset_bottom = 35.0
-text = "Gold: 0"
+[node name="TopBar" type="PanelContainer" parent="GameUI" unique_id=1331272317]
+offset_right = 40.0
+offset_bottom = 40.0
 
-[node name="InventoryLabel" type="Label" parent="GameUI" unique_id=4615836]
-offset_left = 1018.0
-offset_top = 30.0
-offset_right = 1118.0
-offset_bottom = 53.0
+[node name="TopBarContent" type="HBoxContainer" parent="GameUI/TopBar" unique_id=1099559771]
+layout_mode = 2
 
-[node name="SellBag" type="Label" parent="GameUI" unique_id=262746230]
+[node name="GoldLabel" type="Label" parent="GameUI/TopBar/TopBarContent" unique_id=645370205]
+layout_mode = 2
+
+[node name="BagValueLabel" type="Label" parent="GameUI/TopBar/TopBarContent" unique_id=637134409]
+layout_mode = 2
+
+[node name="TabMenu" type="TabContainer" parent="GameUI" unique_id=1267308756]
 anchors_preset = -1
-anchor_bottom = 0.018000001
-offset_left = 1018.0
-offset_right = 1077.0
-offset_bottom = 11.3359995
+anchor_left = 0.61800003
+anchor_top = 0.042000003
+anchor_right = 0.61800003
+anchor_bottom = 0.042000003
+offset_left = -658.44006
+offset_top = 148.35999
+offset_right = -308.44006
+offset_bottom = 291.36
+current_tab = 0
 
-[node name="Trade" type="Button" parent="GameUI" unique_id=674180749]
-anchors_preset = -1
-anchor_left = 0.637
-anchor_top = 0.046000004
-anchor_right = 0.637
-anchor_bottom = 0.046000004
-offset_left = 118.175964
-offset_top = -28.808002
-offset_right = 197.17596
-offset_bottom = 14.191994
+[node name="Skills" type="MarginContainer" parent="GameUI/TabMenu" unique_id=1659026538]
+layout_mode = 2
+metadata/_tab_index = 0
 
-[node name="MiningXPBar" type="ProgressBar" parent="GameUI" unique_id=1706693594]
-offset_left = 610.0
-offset_top = 90.0
-offset_right = 805.0
-offset_bottom = 117.0
+[node name="SkillsContent" type="VBoxContainer" parent="GameUI/TabMenu/Skills" unique_id=1252158190]
+layout_mode = 2
 
-[node name="MiningLabel" type="Label" parent="GameUI" unique_id=1466832191]
-offset_left = 610.0
-offset_top = 64.0
-offset_right = 671.0
-offset_bottom = 91.0
+[node name="MiningLabel" type="Label" parent="GameUI/TabMenu/Skills/SkillsContent" unique_id=505715733]
+layout_mode = 2
 
-[node name="WoodcuttingXPBar" type="ProgressBar" parent="GameUI" unique_id=569116454]
-anchors_preset = -1
-anchor_left = 0.003
-anchor_top = -0.015000001
-anchor_right = 0.003
-anchor_bottom = -0.015000001
-offset_left = 606.544
-offset_top = 37.72
-offset_right = 801.544
-offset_bottom = 64.72
+[node name="MiningXPBar" type="ProgressBar" parent="GameUI/TabMenu/Skills/SkillsContent" unique_id=2081373289]
+layout_mode = 2
 
-[node name="WoodcuttingLabel" type="Label" parent="GameUI" unique_id=1432734992]
-offset_left = 610.0
-offset_right = 671.0
-offset_bottom = 27.0
+[node name="WoodcuttingLabel" type="Label" parent="GameUI/TabMenu/Skills/SkillsContent" unique_id=1460557438]
+layout_mode = 2
+
+[node name="WoodcuttingXPBar" type="ProgressBar" parent="GameUI/TabMenu/Skills/SkillsContent" unique_id=1438922073]
+layout_mode = 2
+
+[node name="Inventory" type="MarginContainer" parent="GameUI/TabMenu" unique_id=1571106257]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="InventoryContent" type="VBoxContainer" parent="GameUI/TabMenu/Inventory" unique_id=1567443928]
+layout_mode = 2
+
+[node name="InventoryLabel" type="Label" parent="GameUI/TabMenu/Inventory/InventoryContent" unique_id=2031618372]
+layout_mode = 2
+
+[node name="TradeButton" type="Button" parent="GameUI/TabMenu/Inventory/InventoryContent" unique_id=351553821]
+layout_mode = 2
+text = "Sell All"
+
+[node name="Equipment" type="MarginContainer" parent="GameUI/TabMenu" unique_id=779786177]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="EquipmentContent" type="VBoxContainer" parent="GameUI/TabMenu/Equipment" unique_id=1590998115]
+layout_mode = 2
+
+[node name="HelmetSlot" type="Label" parent="GameUI/TabMenu/Equipment/EquipmentContent" unique_id=930716890]
+layout_mode = 2
+
+[node name="ChestSlot" type="Label" parent="GameUI/TabMenu/Equipment/EquipmentContent" unique_id=1834507224]
+layout_mode = 2
+
+[node name="LegsSlot" type="Label" parent="GameUI/TabMenu/Equipment/EquipmentContent" unique_id=623548925]
+layout_mode = 2
+
+[node name="BootsSlot" type="Label" parent="GameUI/TabMenu/Equipment/EquipmentContent" unique_id=1215572383]
+layout_mode = 2
+
+[node name="WeaponSlot" type="Label" parent="GameUI/TabMenu/Equipment/EquipmentContent" unique_id=1367887227]
+layout_mode = 2
+
+[node name="OffhandSlot" type="Label" parent="GameUI/TabMenu/Equipment/EquipmentContent" unique_id=813229500]
+layout_mode = 2
+
+[node name="Guild" type="MarginContainer" parent="GameUI/TabMenu" unique_id=1705591225]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 3
+
+[node name="GuildLabel" type="Label" parent="GameUI/TabMenu/Guild" unique_id=1360932226]
+layout_mode = 2
+text = "Guild - Coming Soon!"
 
 [node name="rock" parent="." unique_id=897744711 instance=ExtResource("5_tefeu")]
 position = Vector2(-2, 2)
@@ -116,7 +152,7 @@ position = Vector2(542, 184)
 texture = ExtResource("1_o5qli")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="rock" unique_id=37113767]
-position = Vector2(540, 184)
+position = Vector2(544, 182)
 shape = SubResource("CapsuleShape2D_tipki")
 
 [connection signal="input_event" from="rock" to="rock" method="_on_input_event"]
