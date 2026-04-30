@@ -89,6 +89,18 @@ func load_inventory() -> Dictionary:
 		result[row["item_name"]] = row["amount"]
 	return result
 
+func save_timestamp(timestamp: int) -> void:
+	db.query("CREATE TABLE IF NOT EXISTS session_data (id INTEGER PRIMARY KEY, last_logout INTEGER);")
+	db.query("DELETE FROM session_data;")
+	db.query_with_bindings("INSERT INTO session_data (id, last_logout) VALUES (1, ?)", [timestamp])
+
+func load_timestamp() -> int:
+	db.query("CREATE TABLE IF NOT EXISTS session_data (id INTEGER PRIMARY KEY, last_logout INTEGER);")
+	db.query("SELECT * FROM session_data WHERE id = 1;")
+	if db.query_result.size() > 0:
+		return db.query_result[0]["last_logout"]
+	return 0
+
 func _exit_tree() -> void:
 	if db:
 		db.close_db()

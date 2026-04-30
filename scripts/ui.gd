@@ -10,25 +10,42 @@ extends CanvasLayer
 @onready var mining_xp_bar = $MiningXPBar
 @onready var woodcutting_xp_bar = $WoodcuttingXPBar
 
+# --- Offline Popup ---
+var offline_popup: AcceptDialog
+
 func _ready():
 	# Style the XP bars
 	_style_xp_bars()
+	
+	# Create offline earnings popup
+	_setup_offline_popup()
 	
 	# Connect to Global Data signals
 	if GameData:
 		GameData.gold_updated.connect(_on_gold_updated)
 		GameData.inventory_updated.connect(_on_inventory_updated)
+		GameData.offline_earnings_ready.connect(_on_offline_earnings)
 		_update_full_ui()
 	
 	# Connect the "Trade" button
 	if sell_button:
 		sell_button.pressed.connect(_on_trade_pressed)
 
+func _setup_offline_popup():
+	offline_popup = AcceptDialog.new()
+	offline_popup.title = "Welcome Back!"
+	offline_popup.ok_button_text = "Collect!"
+	add_child(offline_popup)
+
+func _on_offline_earnings(summary: String):
+	offline_popup.dialog_text = summary
+	offline_popup.popup_centered()
+
 func _style_xp_bars():
 	# Mining bar - blue
 	if mining_xp_bar:
 		var mining_style = StyleBoxFlat.new()
-		mining_style.bg_color = Color(0.2, 0.5, 1.0)  # Blue
+		mining_style.bg_color = Color(0.2, 0.5, 1.0)
 		mining_style.corner_radius_top_left = 4
 		mining_style.corner_radius_top_right = 4
 		mining_style.corner_radius_bottom_left = 4
@@ -36,7 +53,7 @@ func _style_xp_bars():
 		mining_xp_bar.add_theme_stylebox_override("fill", mining_style)
 		
 		var mining_bg = StyleBoxFlat.new()
-		mining_bg.bg_color = Color(0.1, 0.1, 0.2)  # Dark blue background
+		mining_bg.bg_color = Color(0.1, 0.1, 0.2)
 		mining_bg.corner_radius_top_left = 4
 		mining_bg.corner_radius_top_right = 4
 		mining_bg.corner_radius_bottom_left = 4
@@ -46,7 +63,7 @@ func _style_xp_bars():
 	# Woodcutting bar - green
 	if woodcutting_xp_bar:
 		var wc_style = StyleBoxFlat.new()
-		wc_style.bg_color = Color(0.2, 0.8, 0.3)  # Green
+		wc_style.bg_color = Color(0.2, 0.8, 0.3)
 		wc_style.corner_radius_top_left = 4
 		wc_style.corner_radius_top_right = 4
 		wc_style.corner_radius_bottom_left = 4
@@ -54,7 +71,7 @@ func _style_xp_bars():
 		woodcutting_xp_bar.add_theme_stylebox_override("fill", wc_style)
 		
 		var wc_bg = StyleBoxFlat.new()
-		wc_bg.bg_color = Color(0.05, 0.15, 0.05)  # Dark green background
+		wc_bg.bg_color = Color(0.05, 0.15, 0.05)
 		wc_bg.corner_radius_top_left = 4
 		wc_bg.corner_radius_top_right = 4
 		wc_bg.corner_radius_bottom_left = 4
@@ -69,7 +86,6 @@ func _on_gold_updated():
 		gold_label.text = "Gold: " + str(GameData.gold)
 
 func _on_inventory_updated():
-	# Refresh Inventory List
 	if inventory_label:
 		var text = "Inventory:\n"
 		var has_items = false
@@ -83,12 +99,10 @@ func _on_inventory_updated():
 			
 		inventory_label.text = text
 	
-	# Update skill labels and XP bars
 	_update_xp_bars()
 	_update_trade_preview()
 
 func _update_xp_bars():
-	# Mining
 	if mining_label:
 		var level = GameData.skills["mining"]["level"]
 		var xp = GameData.skills["mining"]["xp"]
@@ -102,7 +116,6 @@ func _update_xp_bars():
 		mining_xp_bar.max_value = xp_required
 		mining_xp_bar.value = xp
 
-	# Woodcutting
 	if woodcutting_label:
 		var level = GameData.skills["woodcutting"]["level"]
 		var xp = GameData.skills["woodcutting"]["xp"]
@@ -124,7 +137,6 @@ func _update_trade_preview():
 				potential_gold += GameData.inventory[item] * GameData.item_prices[item]
 		sell_label.text = "Bag Value: " + str(potential_gold) + "g"
 
-# Helper function to check prices safely
 func item_prices_has(item_name):
 	return GameData.item_prices.has(item_name)
 
