@@ -1,35 +1,42 @@
 extends Node2D
 
 func _ready():
-	print("🚀 Attempting to prime database...")
-	
-	if SnippetDB:
-		# Using triple quotes allows us to paste the code exactly as it looks!
-		var advanced_wood_code = """extends Area2D
+	_prime_snippet_db()
+	_convert_to_idle_layout()
+
+func _prime_snippet_db():
+	print("Attempting to prime database...")
+	if not SnippetDB:
+		print("ERROR: SnippetDB Autoload not found!")
+		return
+
+	var advanced_wood_code = """extends Area2D
 
 @export var skill_type: String = "woodcutting"
 @export var xp_amount: int = 25
-@export var chop_time: float = 3.0 
-@export var reach_distance: float = 125.0
+@export var chop_time: float = 3.0
 
-var is_chopping = false
-
-func _on_input_event(_viewport, event, _shape_idx):
-	if event is InputEventMouseButton and event.pressed:
-		var player = get_tree().get_first_node_in_group("player_group")
-		if player and global_position.distance_to(player.global_position) < reach_distance:
-			start_chopping(player)
+func start_chopping():
+	GameData.start_activity(skill_type)
 """
+	SnippetDB.add_snippet(
+		"Idle Woodcutting",
+		advanced_wood_code,
+		"GDScript",
+		"4.x",
+		"Starts a station-based idle woodcutting activity",
+		"Skilling"
+	)
+	print("Database primed!")
 
-		SnippetDB.add_snippet(
-			"Advanced Woodcutting", 
-			advanced_wood_code, 
-			"GDScript", 
-			"4.x", 
-			"Includes distance checks and exports", 
-			"Skilling"
-		)
-		
-		print("✅ Database Primed with Advanced Logic!")
-	else:
-		print("❌ ERROR: SnippetDB Autoload not found!")
+func _convert_to_idle_layout():
+	for node_name in ["Player", "rock", "Tree", "Ground"]:
+		var old_node = get_node_or_null(node_name)
+		if old_node:
+			old_node.visible = false
+			old_node.process_mode = Node.PROCESS_MODE_DISABLED
+
+	var activity_view = CanvasLayer.new()
+	activity_view.name = "IdleActivityView"
+	activity_view.set_script(load("res://scripts/idle_activity_view.gd"))
+	add_child(activity_view)

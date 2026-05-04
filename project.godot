@@ -19,6 +19,7 @@ config/icon="res://assets/icon.svg"
 
 GameData="*uid://bep6uwfphvxrl"
 SnippetDB="*uid://c45ai0w8n2egb"
+EquipmentData="*res://scripts/EquipmentData.gd"
 
 [display]
 
