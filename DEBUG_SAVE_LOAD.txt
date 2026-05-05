@@ -1,0 +1,33 @@
+Debugging Skills Not Saving Issue
+=====================================
+
+The problem you're experiencing where skills don't persist between game sessions indicates either:
+1. The save operation is failing silently
+2. The load operation is not reading the data correctly
+3. The database structure doesn't match what the code expects
+
+To diagnose this, I've added detailed logging to your save/load functions.
+
+What to check in your Godot console:
+-------------------------------------
+1. When you gain XP, you should see "LEVEL UP" or "Game Saved!" messages
+2. When you start the game, look for "Loaded! Gold: X | Total Level: Y"
+3. The total level should increase from the default (31) when you've gained levels
+
+Quick test procedure:
+1. Start your game fresh
+2. Do some mining to gain XP and level up mining
+3. Watch the console for "LEVEL UP: mining is now level X"
+4. Stop the game
+5. Restart the game
+6. Check if console says your total level is higher than 31
+7. If total level is still 31, skills didn't save
+
+If skills still don't save after the database migration:
+--------------------------------------------------------
+The most likely issue is that your old database file is corrupted or the migration didn't work properly.
+
+Solution: Delete your save file and start fresh.
+Your save file is at: C:\Users\scoot\AppData\Roaming\Godot\app_userdata\Idle Skilling game\snippets.db
+
+Delete that file, then restart your game. It will create a fresh database with all the correct columns.

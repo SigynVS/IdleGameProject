@@ -16,10 +16,20 @@ func _ready() -> void:
 	db = SQLite.new()
 	db.path = DB_PATH
 	db.verbosity_level = SQLite.QUIET
-	db.open_db()
+	
+	print("=== SnippetDB Initializing ===")
+	print("Database path: %s" % DB_PATH)
+	
+	if not db.open_db():
+		push_error("FAILED TO OPEN DATABASE!")
+		return
+	
+	print("Database opened successfully")
 	db.query("PRAGMA foreign_keys = ON;")
+	db.query("PRAGMA synchronous = FULL;")  # Force immediate writes to disk
 	_apply_schema()
 	_migrate_db()
+	print("=== SnippetDB Ready ===")
 
 func _apply_schema() -> void:
 	if not FileAccess.file_exists(SCHEMA_PATH):
@@ -45,22 +55,76 @@ func _apply_schema() -> void:
 				in_trigger = false
 
 func _migrate_db() -> void:
+	print("Running database migration...")
+	
 	# Player data — one row, columns for every skill
 	var columns = "id INTEGER PRIMARY KEY, gold INTEGER"
 	for skill in ALL_SKILLS:
 		columns += ", %s_xp INTEGER DEFAULT 0, %s_level INTEGER DEFAULT 1" % [skill, skill]
 	db.query("CREATE TABLE IF NOT EXISTS player_data (%s);" % columns)
+	print("Created/verified player_data table")
+	
+	# Add any missing skill columns to existing table
+	_add_missing_skill_columns()
 
 	db.query("CREATE TABLE IF NOT EXISTS skills_used (skill_name TEXT PRIMARY KEY);")
 	db.query("CREATE TABLE IF NOT EXISTS inventory_data (item_name TEXT PRIMARY KEY, amount INTEGER);")
 	db.query("CREATE TABLE IF NOT EXISTS session_data (id INTEGER PRIMARY KEY, last_logout INTEGER);")
 	db.query("CREATE TABLE IF NOT EXISTS equipped_data (slot TEXT PRIMARY KEY, item_id TEXT);")
 	db.query("CREATE TABLE IF NOT EXISTS game_state (key TEXT PRIMARY KEY, value TEXT);")
+	print("All tables created/verified")
+
+func _add_missing_skill_columns() -> void:
+	"""
+	Check existing player_data table and add any missing skill columns.
+	This allows the database to upgrade gracefully without losing save data.
+	"""
+	# Get list of existing columns in player_data table
+	db.query("PRAGMA table_info(player_data);")
+	var existing_columns = []
+	for row in db.query_result:
+		existing_columns.append(row["name"])
+	
+	print("Existing columns in player_data: %s" % str(existing_columns))
+	
+	# Add missing skill columns for each skill
+	var columns_added = 0
+	for skill in ALL_SKILLS:
+		var xp_col = skill + "_xp"
+		var level_col = skill + "_level"
+		
+		# Add XP column if missing
+		if not existing_columns.has(xp_col):
+			db.query("ALTER TABLE player_data ADD COLUMN %s INTEGER DEFAULT 0;" % xp_col)
+			print("✓ Added column: %s" % xp_col)
+			columns_added += 1
+		
+		# Add level column if missing (with special default for hitpoints)
+		if not existing_columns.has(level_col):
+			var default_level = 10 if skill == "hitpoints" else 1
+			db.query("ALTER TABLE player_data ADD COLUMN %s INTEGER DEFAULT %d;" % [level_col, default_level])
+			print("✓ Added column: %s" % level_col)
+			columns_added += 1
+	
+	if columns_added == 0:
+		print("No missing columns - database is up to date")
+	else:
+		print("Added %d missing columns" % columns_added)
 
 # ─── Player Data ─────────────────────────────────────────────────────────────
 
 func save_player_data(gold: int, skills: Dictionary, skills_used: Dictionary) -> void:
+	print("\n=== SAVING PLAYER DATA ===")
+	print("Gold to save: %d" % gold)
+	
+	# Start a transaction for atomic save
+	db.query("BEGIN TRANSACTION;")
+	
+	# Delete existing data
 	db.query("DELETE FROM player_data;")
+	print("Cleared existing player_data")
+	
+	# Build the INSERT statement
 	var cols = "id, gold"
 	var vals = "1, " + str(gold)
 	for skill in ALL_SKILLS:
@@ -68,17 +132,60 @@ func save_player_data(gold: int, skills: Dictionary, skills_used: Dictionary) ->
 		var xp  = skills[skill]["xp"]    if skills.has(skill) else 0
 		var lvl = skills[skill]["level"] if skills.has(skill) else 1
 		vals += ", %d, %d" % [xp, lvl]
-	db.query("INSERT INTO player_data (%s) VALUES (%s);" % [cols, vals])
-
+		if skills.has(skill):
+			print("  Saving %s: Lv %d (%d xp)" % [skill, lvl, xp])
+	
+	var sql = "INSERT INTO player_data (%s) VALUES (%s);" % [cols, vals]
+	db.query(sql)
+	
+	# Save skills_used
 	db.query("DELETE FROM skills_used;")
 	for skill_name in skills_used.keys():
 		db.query_with_bindings("INSERT OR IGNORE INTO skills_used (skill_name) VALUES (?);", [skill_name])
-
-func load_player_data() -> Dictionary:
+	print("Saved %d skills_used entries" % skills_used.size())
+	
+	# Commit the transaction and force write to disk
+	db.query("COMMIT;")
+	
+	# Verify the save worked by reading it back
 	db.query("SELECT * FROM player_data WHERE id = 1;")
 	if db.query_result.size() > 0:
-		return db.query_result[0]
-	return {}
+		print("✓ Player data saved and committed to disk")
+		print("  Verified gold in DB: %d" % db.query_result[0].get("gold", -1))
+		print("  Verified total level: %d" % _calculate_total_level_from_data(db.query_result[0]))
+	else:
+		push_error("✗ SAVE FAILED - No data in database after save!")
+	print("=== SAVE COMPLETE ===\n")
+
+func load_player_data() -> Dictionary:
+	print("\n=== LOADING PLAYER DATA ===")
+	db.query("SELECT * FROM player_data WHERE id = 1;")
+	
+	if db.query_result.size() > 0:
+		var data = db.query_result[0]
+		print("✓ Loaded player data")
+		print("  Gold: %d" % data.get("gold", 0))
+		var total = _calculate_total_level_from_data(data)
+		print("  Total level: %d" % total)
+		
+		# Print first few skills to verify data
+		for skill in ["woodcutting", "mining", "attack"]:
+			var xp = data.get(skill + "_xp", 0)
+			var lvl = data.get(skill + "_level", 1)
+			print("  %s: Lv %d (%d xp)" % [skill, lvl, xp])
+		
+		print("=== LOAD COMPLETE ===\n")
+		return data
+	else:
+		print("✗ No save data found in database")
+		print("=== LOAD COMPLETE (empty) ===\n")
+		return {}
+
+func _calculate_total_level_from_data(data: Dictionary) -> int:
+	var total = 0
+	for skill in ALL_SKILLS:
+		total += data.get(skill + "_level", 1)
+	return total
 
 func load_skills_used() -> Dictionary:
 	db.query("SELECT * FROM skills_used;")
@@ -90,6 +197,8 @@ func load_skills_used() -> Dictionary:
 # ─── Inventory ───────────────────────────────────────────────────────────────
 
 func save_inventory(inventory: Dictionary) -> void:
+	print("Saving inventory: %s" % str(inventory))
+	db.query("BEGIN TRANSACTION;")
 	db.query("DELETE FROM inventory_data;")
 	for item in inventory.keys():
 		if inventory[item] > 0:
@@ -97,23 +206,28 @@ func save_inventory(inventory: Dictionary) -> void:
 				"INSERT INTO inventory_data (item_name, amount) VALUES (?, ?);",
 				[item, inventory[item]]
 			)
+	db.query("COMMIT;")
+	print("✓ Inventory saved and committed")
 
 func load_inventory() -> Dictionary:
 	db.query("SELECT * FROM inventory_data;")
 	var result: Dictionary = {}
 	for row in db.query_result:
 		result[row["item_name"]] = row["amount"]
+	print("Loaded inventory: %s" % str(result))
 	return result
 
 # ─── Equipment ───────────────────────────────────────────────────────────────
 
 func save_equipped(equipped: Dictionary) -> void:
+	db.query("BEGIN TRANSACTION;")
 	db.query("DELETE FROM equipped_data;")
 	for slot in equipped.keys():
 		db.query_with_bindings(
 			"INSERT INTO equipped_data (slot, item_id) VALUES (?, ?);",
 			[slot, equipped[slot]]
 		)
+	db.query("COMMIT;")
 
 func load_equipped() -> Dictionary:
 	db.query("SELECT * FROM equipped_data;")
@@ -125,8 +239,11 @@ func load_equipped() -> Dictionary:
 # ─── Timestamps ──────────────────────────────────────────────────────────────
 
 func save_timestamp(timestamp: int) -> void:
+	db.query("BEGIN TRANSACTION;")
 	db.query("DELETE FROM session_data;")
 	db.query_with_bindings("INSERT INTO session_data (id, last_logout) VALUES (1, ?);", [timestamp])
+	db.query("COMMIT;")
+	print("Saved logout timestamp: %d" % timestamp)
 
 func load_timestamp() -> int:
 	db.query("SELECT * FROM session_data WHERE id = 1;")
@@ -135,10 +252,12 @@ func load_timestamp() -> int:
 	return 0
 
 func save_state_value(key: String, value: String) -> void:
+	db.query("BEGIN TRANSACTION;")
 	db.query_with_bindings(
 		"INSERT OR REPLACE INTO game_state (key, value) VALUES (?, ?);",
 		[key, value]
 	)
+	db.query("COMMIT;")
 
 func load_state_value(key: String, default_value := "") -> String:
 	db.query_with_bindings("SELECT value FROM game_state WHERE key = ?;", [key])
@@ -164,5 +283,9 @@ func search(query: String) -> Array:
 	return db.query_result.duplicate()
 
 func _exit_tree() -> void:
+	print("SnippetDB shutting down - ensuring all data is written to disk")
 	if db:
+		# One final commit to make absolutely sure everything is flushed
+		db.query("PRAGMA wal_checkpoint(TRUNCATE);")
 		db.close_db()
+	print("SnippetDB closed")
