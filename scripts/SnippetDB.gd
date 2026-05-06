@@ -72,6 +72,12 @@ func _migrate_db() -> void:
 	db.query("CREATE TABLE IF NOT EXISTS session_data (id INTEGER PRIMARY KEY, last_logout INTEGER);")
 	db.query("CREATE TABLE IF NOT EXISTS equipped_data (slot TEXT PRIMARY KEY, item_id TEXT);")
 	db.query("CREATE TABLE IF NOT EXISTS game_state (key TEXT PRIMARY KEY, value TEXT);")
+	
+	# Party system tables
+	db.query("CREATE TABLE IF NOT EXISTS adventurers (adventurer_id TEXT PRIMARY KEY, data TEXT);")
+	db.query("CREATE TABLE IF NOT EXISTS party_meta (key TEXT PRIMARY KEY, value INTEGER);")
+	db.query("CREATE TABLE IF NOT EXISTS active_dungeons (dungeon_id TEXT PRIMARY KEY, data TEXT);")
+	
 	print("All tables created/verified")
 
 func _add_missing_skill_columns() -> void:
@@ -132,8 +138,6 @@ func save_player_data(gold: int, skills: Dictionary, skills_used: Dictionary) ->
 		var xp  = skills[skill]["xp"]    if skills.has(skill) else 0
 		var lvl = skills[skill]["level"] if skills.has(skill) else 1
 		vals += ", %d, %d" % [xp, lvl]
-		if skills.has(skill):
-			print("  Saving %s: Lv %d (%d xp)" % [skill, lvl, xp])
 	
 	var sql = "INSERT INTO player_data (%s) VALUES (%s);" % [cols, vals]
 	db.query(sql)
@@ -150,9 +154,7 @@ func save_player_data(gold: int, skills: Dictionary, skills_used: Dictionary) ->
 	# Verify the save worked by reading it back
 	db.query("SELECT * FROM player_data WHERE id = 1;")
 	if db.query_result.size() > 0:
-		print("✓ Player data saved and committed to disk")
-		print("  Verified gold in DB: %d" % db.query_result[0].get("gold", -1))
-		print("  Verified total level: %d" % _calculate_total_level_from_data(db.query_result[0]))
+		print("✓ Player data saved")
 	else:
 		push_error("✗ SAVE FAILED - No data in database after save!")
 	print("=== SAVE COMPLETE ===\n")
@@ -167,13 +169,6 @@ func load_player_data() -> Dictionary:
 		print("  Gold: %d" % data.get("gold", 0))
 		var total = _calculate_total_level_from_data(data)
 		print("  Total level: %d" % total)
-		
-		# Print first few skills to verify data
-		for skill in ["woodcutting", "mining", "attack"]:
-			var xp = data.get(skill + "_xp", 0)
-			var lvl = data.get(skill + "_level", 1)
-			print("  %s: Lv %d (%d xp)" % [skill, lvl, xp])
-		
 		print("=== LOAD COMPLETE ===\n")
 		return data
 	else:
@@ -197,7 +192,6 @@ func load_skills_used() -> Dictionary:
 # ─── Inventory ───────────────────────────────────────────────────────────────
 
 func save_inventory(inventory: Dictionary) -> void:
-	print("Saving inventory: %s" % str(inventory))
 	db.query("BEGIN TRANSACTION;")
 	db.query("DELETE FROM inventory_data;")
 	for item in inventory.keys():
@@ -207,14 +201,12 @@ func save_inventory(inventory: Dictionary) -> void:
 				[item, inventory[item]]
 			)
 	db.query("COMMIT;")
-	print("✓ Inventory saved and committed")
 
 func load_inventory() -> Dictionary:
 	db.query("SELECT * FROM inventory_data;")
 	var result: Dictionary = {}
 	for row in db.query_result:
 		result[row["item_name"]] = row["amount"]
-	print("Loaded inventory: %s" % str(result))
 	return result
 
 # ─── Equipment ───────────────────────────────────────────────────────────────
@@ -236,6 +228,80 @@ func load_equipped() -> Dictionary:
 		result[row["slot"]] = row["item_id"]
 	return result
 
+# ─── Party System ────────────────────────────────────────────────────────────
+
+func save_adventurers(adventurers: Dictionary, next_id: int) -> void:
+	db.query("BEGIN TRANSACTION;")
+	db.query("DELETE FROM adventurers;")
+	db.query("DELETE FROM party_meta;")
+	
+	# Save each adventurer as JSON
+	for adv_id in adventurers.keys():
+		var json_data = JSON.stringify(adventurers[adv_id])
+		db.query_with_bindings(
+			"INSERT INTO adventurers (adventurer_id, data) VALUES (?, ?);",
+			[adv_id, json_data]
+		)
+	
+	# Save next ID
+	db.query_with_bindings(
+		"INSERT INTO party_meta (key, value) VALUES (?, ?);",
+		["next_adventurer_id", next_id]
+	)
+	
+	db.query("COMMIT;")
+	print("Saved %d adventurers" % adventurers.size())
+
+func load_adventurers() -> Dictionary:
+	db.query("SELECT * FROM adventurers;")
+	var adventurers = {}
+	
+	for row in db.query_result:
+		var adv_id = row["adventurer_id"]
+		var json_str = row["data"]
+		var json = JSON.new()
+		var parse_result = json.parse(json_str)
+		if parse_result == OK:
+			adventurers[adv_id] = json.data
+	
+	# Load next ID
+	db.query_with_bindings("SELECT value FROM party_meta WHERE key = ?;", ["next_adventurer_id"])
+	var next_id = 1
+	if db.query_result.size() > 0:
+		next_id = db.query_result[0]["value"]
+	
+	print("Loaded %d adventurers" % adventurers.size())
+	return {"adventurers": adventurers, "next_id": next_id}
+
+func save_dungeons(dungeons: Dictionary) -> void:
+	db.query("BEGIN TRANSACTION;")
+	db.query("DELETE FROM active_dungeons;")
+	
+	for dungeon_id in dungeons.keys():
+		var json_data = JSON.stringify(dungeons[dungeon_id])
+		db.query_with_bindings(
+			"INSERT INTO active_dungeons (dungeon_id, data) VALUES (?, ?);",
+			[dungeon_id, json_data]
+		)
+	
+	db.query("COMMIT;")
+	print("Saved %d active dungeons" % dungeons.size())
+
+func load_dungeons() -> Dictionary:
+	db.query("SELECT * FROM active_dungeons;")
+	var dungeons = {}
+	
+	for row in db.query_result:
+		var dungeon_id = row["dungeon_id"]
+		var json_str = row["data"]
+		var json = JSON.new()
+		var parse_result = json.parse(json_str)
+		if parse_result == OK:
+			dungeons[dungeon_id] = json.data
+	
+	print("Loaded %d active dungeons" % dungeons.size())
+	return dungeons
+
 # ─── Timestamps ──────────────────────────────────────────────────────────────
 
 func save_timestamp(timestamp: int) -> void:
@@ -243,7 +309,6 @@ func save_timestamp(timestamp: int) -> void:
 	db.query("DELETE FROM session_data;")
 	db.query_with_bindings("INSERT INTO session_data (id, last_logout) VALUES (1, ?);", [timestamp])
 	db.query("COMMIT;")
-	print("Saved logout timestamp: %d" % timestamp)
 
 func load_timestamp() -> int:
 	db.query("SELECT * FROM session_data WHERE id = 1;")
@@ -285,7 +350,6 @@ func search(query: String) -> Array:
 func _exit_tree() -> void:
 	print("SnippetDB shutting down - ensuring all data is written to disk")
 	if db:
-		# One final commit to make absolutely sure everything is flushed
 		db.query("PRAGMA wal_checkpoint(TRUNCATE);")
 		db.close_db()
 	print("SnippetDB closed")

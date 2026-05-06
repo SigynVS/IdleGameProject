@@ -33,6 +33,7 @@ var production_summary_label: Label
 var production_tab_buttons: Dictionary = {}
 var production_mode: String = "all"
 var offline_popup: AcceptDialog
+var party_panels_helper: Control
 
 func _ready():
 	layer = 50
@@ -63,6 +64,12 @@ func _build_dashboard():
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(root)
 
+	# Load party panels script
+	var PartyPanelsScript = load("res://scripts/party_panels.gd")
+	if PartyPanelsScript:
+		party_panels_helper = PartyPanelsScript.new()
+		root.add_child(party_panels_helper)
+
 	_build_sidebar(root)
 	_build_top_nav(root)
 	_build_user_card(root)
@@ -71,7 +78,24 @@ func _build_dashboard():
 	_build_inventory_card(root)
 	_build_equipment_card(root)
 	_build_crafting_card(root)
+	_build_party_panels(root)
 	_setup_offline_popup()
+
+func _build_party_panels(root: Control):
+	if not party_panels_helper:
+		return
+	
+	# Build adventurers panel
+	var adventurers_panel = party_panels_helper.build_adventurers_panel()
+	adventurers_panel.visible = false
+	root.add_child(adventurers_panel)
+	dashboard_panels["Adventurers"] = adventurers_panel
+	
+	# Build dungeons panel
+	var dungeons_panel = party_panels_helper.build_dungeons_panel()
+	dungeons_panel.visible = false
+	root.add_child(dungeons_panel)
+	dashboard_panels["Dungeons"] = dungeons_panel
 
 func _build_sidebar(root: Control):
 	var side = _panel("Sidebar", Vector2(24, 24), Vector2(284, 1820), PANEL_DARK)
@@ -103,6 +127,11 @@ func _build_sidebar(root: Control):
 		var btn = _sidebar_activity_button(activity.get("name", activity_id.capitalize()), activity_id)
 		activity_buttons[activity_id] = btn
 		box.add_child(btn)
+	
+	box.add_child(_spacer(12))
+	box.add_child(_section_label("Party"))
+	box.add_child(_sidebar_nav_button("Adventurers", "Adventurers"))
+	box.add_child(_sidebar_nav_button("Dungeons", "Dungeons"))
 
 func _build_top_nav(root: Control):
 	var nav = HBoxContainer.new()
@@ -357,15 +386,29 @@ func _refresh_activity_buttons():
 
 func _focus_panel(panel_name: String):
 	_close_production_panel()
+	
+	# Hide all panels first
 	for key in dashboard_panels.keys():
-		var color = PANEL_BG
-		if key == "Sidebar":
-			color = PANEL_DARK
-		dashboard_panels[key].add_theme_stylebox_override("panel", _style(color, 6))
+		if dashboard_panels[key] is PanelContainer:
+			dashboard_panels[key].visible = false
+	
+	# Show and highlight selected panel
 	if dashboard_panels.has(panel_name):
 		var panel: PanelContainer = dashboard_panels[panel_name]
-		panel.add_theme_stylebox_override("panel", _style(Color(0.05, 0.34, 0.34, 0.94), 6))
+		panel.visible = true
 		panel.move_to_front()
+		
+		# Reset all panel colors
+		for key in dashboard_panels.keys():
+			var color = PANEL_BG
+			if key == "Sidebar":
+				color = PANEL_DARK
+			if dashboard_panels[key] is PanelContainer:
+				dashboard_panels[key].add_theme_stylebox_override("panel", _style(color, 6))
+		
+		# Highlight selected panel
+		if panel_name not in ["Sidebar"]:
+			panel.add_theme_stylebox_override("panel", _style(Color(0.05, 0.34, 0.34, 0.94), 6))
 
 func _open_production_panel(mode: String):
 	production_mode = mode
