@@ -282,7 +282,7 @@ func _build_crafting_card(root: Control):
 	production_scrim.visible = false
 	root.add_child(production_scrim)
 
-	production_panel = _panel("Crafting", Vector2(318, 120), Vector2(738, 1658), PANEL_BG)
+	production_panel = _panel("Crafting", Vector2(318, 90), Vector2(738, 1820), PANEL_BG)
 	production_panel.visible = false
 	root.add_child(production_panel)
 	var box = _card_box(production_panel)
@@ -291,9 +291,6 @@ func _build_crafting_card(root: Control):
 	production_title_label = _card_title("Smithing / Crafting")
 	production_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(production_title_label)
-	var close = _mini_button("Close")
-	close.pressed.connect(_close_production_panel)
-	header.add_child(close)
 	box.add_child(header)
 
 	production_summary_label = _small_label("Choose a production discipline to inspect recipes by tier.")
@@ -370,9 +367,13 @@ func _on_activity_cycle_completed(_activity_id: String, reward_text: String):
 func _on_activity_button_pressed(activity_id: String):
 	GameData.start_activity(activity_id)
 	if activity_id == "smithing":
-		_open_production_panel("smithing")
+		_focus_panel("Crafting")
+		_on_production_mode_pressed("smithing")
 	elif activity_id == "crafting":
-		_open_production_panel("crafting")
+		_focus_panel("Crafting")
+		_on_production_mode_pressed("crafting")
+	else:
+		_focus_panel("ActiveTask")
 
 func _on_stop_activity_pressed():
 	GameData.stop_activity()
@@ -384,31 +385,32 @@ func _refresh_activity_buttons():
 		btn.button_pressed = active
 		btn.add_theme_stylebox_override("normal", _style(ACCENT if active else PANEL_ROW, 4))
 
+const PARTY_PANELS = ["Adventurers", "Dungeons"]
+const MAIN_PANELS = ["UserInfo", "Skills", "ActiveTask", "Inventory", "Equipment", "Crafting"]
+
 func _focus_panel(panel_name: String):
 	_close_production_panel()
 	
-	# Hide all panels first
-	for key in dashboard_panels.keys():
-		if dashboard_panels[key] is PanelContainer:
+	var is_party_panel = panel_name in PARTY_PANELS
+	
+	# Hide party panels
+	for key in PARTY_PANELS:
+		if dashboard_panels.has(key):
 			dashboard_panels[key].visible = false
 	
-	# Show and highlight selected panel
-	if dashboard_panels.has(panel_name):
-		var panel: PanelContainer = dashboard_panels[panel_name]
-		panel.visible = true
-		panel.move_to_front()
-		
-		# Reset all panel colors
-		for key in dashboard_panels.keys():
-			var color = PANEL_BG
-			if key == "Sidebar":
-				color = PANEL_DARK
-			if dashboard_panels[key] is PanelContainer:
-				dashboard_panels[key].add_theme_stylebox_override("panel", _style(color, 6))
-		
-		# Highlight selected panel
-		if panel_name not in ["Sidebar"]:
-			panel.add_theme_stylebox_override("panel", _style(Color(0.05, 0.34, 0.34, 0.94), 6))
+	if is_party_panel:
+		# Hide main dashboard panels, show the requested party panel
+		for key in MAIN_PANELS:
+			if dashboard_panels.has(key):
+				dashboard_panels[key].visible = false
+		if dashboard_panels.has(panel_name):
+			dashboard_panels[panel_name].visible = true
+			dashboard_panels[panel_name].move_to_front()
+	else:
+		# Show all main dashboard panels
+		for key in MAIN_PANELS:
+			if dashboard_panels.has(key):
+				dashboard_panels[key].visible = true
 
 func _open_production_panel(mode: String):
 	production_mode = mode
