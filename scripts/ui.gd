@@ -34,6 +34,8 @@ var production_tab_buttons: Dictionary = {}
 var production_mode: String = "all"
 var offline_popup: AcceptDialog
 var party_panels_helper: Control
+var inventory_sort_mode: String = "name"
+var inventory_sort_buttons: Dictionary = {}
 
 func _ready():
 	layer = 50
@@ -43,6 +45,7 @@ func _ready():
 	if GameData:
 		GameData.gold_updated.connect(_on_gold_updated)
 		GameData.inventory_updated.connect(_refresh_inventory)
+		GameData.inventory_updated.connect(_refresh_full_inventory)
 		GameData.equipment_updated.connect(_refresh_equipment)
 		GameData.offline_earnings_ready.connect(_on_offline_earnings)
 		GameData.activity_changed.connect(_on_activity_changed)
@@ -79,6 +82,7 @@ func _build_dashboard():
 	_build_equipment_card(root)
 	_build_crafting_card(root)
 	_build_party_panels(root)
+	_build_full_inventory_panel(root)
 	_setup_offline_popup()
 
 func _build_party_panels(root: Control):
@@ -97,6 +101,152 @@ func _build_party_panels(root: Control):
 	root.add_child(dungeons_panel)
 	dashboard_panels["Dungeons"] = dungeons_panel
 
+func _build_full_inventory_panel(root: Control):
+	var panel = _panel("FullInventory", Vector2(318, 90), Vector2(738, 1820), PANEL_BG)
+	panel.visible = false
+	root.add_child(panel)
+	var box = _card_box(panel)
+
+	var header = HBoxContainer.new()
+	var title = _card_title("Inventory")
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	var sell_all_btn = Button.new()
+	sell_all_btn.text = "Sell All"
+	sell_all_btn.custom_minimum_size = Vector2(96, 42)
+	sell_all_btn.add_theme_stylebox_override("normal", _style(ACCENT, 5))
+	sell_all_btn.add_theme_stylebox_override("hover", _style(ACCENT_HOVER, 5))
+	sell_all_btn.add_theme_color_override("font_color", TEXT)
+	sell_all_btn.pressed.connect(func():
+		GameData.sell_all_items()
+		_refresh_full_inventory()
+	)
+	header.add_child(sell_all_btn)
+	box.add_child(header)
+
+	# Sort bar
+	var sort_row = HBoxContainer.new()
+	sort_row.add_theme_constant_override("separation", 6)
+	box.add_child(sort_row)
+	var sort_lbl = _small_label("Sort:")
+	sort_lbl.autowrap_mode = 0
+	sort_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	sort_row.add_child(sort_lbl)
+	for pair in [["Name", "name"], ["Amount", "amount"], ["Value", "value"]]:
+		var btn = Button.new()
+		btn.text = pair[0]
+		btn.toggle_mode = true
+		btn.custom_minimum_size = Vector2(68, 28)
+		btn.add_theme_font_size_override("font_size", 12)
+		btn.add_theme_stylebox_override("normal", _style(PANEL_ROW, 4))
+		btn.add_theme_stylebox_override("hover", _style(ACCENT_HOVER, 4))
+		btn.add_theme_color_override("font_color", TEXT)
+		btn.pressed.connect(func():
+			inventory_sort_mode = pair[1]
+			_refresh_sort_buttons()
+			_refresh_full_inventory()
+		)
+		inventory_sort_buttons[pair[1]] = btn
+		sort_row.add_child(btn)
+	_refresh_sort_buttons()
+
+	var scroll = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 1600)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(scroll)
+	var rows = VBoxContainer.new()
+	rows.name = "FullInventoryRows"
+	rows.add_theme_constant_override("separation", 6)
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(rows)
+
+func _refresh_sort_buttons():
+	for mode in inventory_sort_buttons.keys():
+		var btn: Button = inventory_sort_buttons[mode]
+		var active = mode == inventory_sort_mode
+		btn.button_pressed = active
+		btn.add_theme_stylebox_override("normal", _style(ACCENT_GOLD if active else PANEL_ROW, 4))
+
+func _get_sorted_inventory_keys() -> Array:
+	var keys = GameData.inventory.keys().filter(func(k): return GameData.inventory[k] > 0)
+	match inventory_sort_mode:
+		"amount":
+			keys.sort_custom(func(a, b): return GameData.inventory[a] > GameData.inventory[b])
+		"value":
+			keys.sort_custom(func(a, b):
+				return GameData.item_prices.get(a, 0) * GameData.inventory[a] > GameData.item_prices.get(b, 0) * GameData.inventory[b]
+			)
+		_:
+			keys.sort()
+	return keys
+
+func _refresh_full_inventory():
+	var panel = dashboard_panels.get("FullInventory")
+	if not panel or not panel.visible:
+		return
+	var rows = panel.find_child("FullInventoryRows", true, false)
+	if not rows:
+		return
+	for child in rows.get_children():
+		child.queue_free()
+
+	var sorted_keys = _get_sorted_inventory_keys()
+	var has_items = sorted_keys.size() > 0
+	for item_name in sorted_keys:
+		var amount = GameData.inventory[item_name]
+		var row = PanelContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_stylebox_override("panel", _style(PANEL_ROW, 4))
+		var hbox = HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 8)
+		row.add_child(hbox)
+
+		var name_lbl = _body_label(item_name)
+		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hbox.add_child(name_lbl)
+
+		var amt_lbl = _body_label("x%d" % amount)
+		amt_lbl.custom_minimum_size = Vector2(48, 0)
+		amt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		hbox.add_child(amt_lbl)
+
+		var price = GameData.item_prices.get(item_name, 0)
+		if price > 0:
+			var price_lbl = _small_label("%dg ea" % price)
+			price_lbl.custom_minimum_size = Vector2(60, 0)
+			price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			hbox.add_child(price_lbl)
+			var sell_btn = _mini_button("Sell 1")
+			sell_btn.pressed.connect(func():
+				GameData.sell_item(item_name, 1)
+				_refresh_full_inventory()
+			)
+			hbox.add_child(sell_btn)
+			var sell_all_item_btn = _mini_button("Sell All")
+			sell_all_item_btn.pressed.connect(func():
+				GameData.sell_item(item_name, GameData.inventory.get(item_name, 0))
+				_refresh_full_inventory()
+			)
+			hbox.add_child(sell_all_item_btn)
+		else:
+			var no_sale_lbl = _small_label("No value")
+			no_sale_lbl.custom_minimum_size = Vector2(60, 0)
+			hbox.add_child(no_sale_lbl)
+
+		var item_id = _find_item_id_by_name(item_name)
+		if item_id != "":
+			var equip_btn = _mini_button("Equip")
+			equip_btn.pressed.connect(func():
+				GameData.equip_item(item_id)
+				_refresh_full_inventory()
+			)
+			hbox.add_child(equip_btn)
+
+		rows.add_child(row)
+
+	if not has_items:
+		rows.add_child(_small_label("Your inventory is empty."))
+
 func _build_sidebar(root: Control):
 	var side = _panel("Sidebar", Vector2(24, 24), Vector2(284, 1820), PANEL_DARK)
 	root.add_child(side)
@@ -111,14 +261,14 @@ func _build_sidebar(root: Control):
 	side.add_child(box)
 
 	box.add_child(_section_label("Account"))
-	box.add_child(_sidebar_nav_button("Profile", "UserInfo"))
-	box.add_child(_sidebar_nav_button("Inventory", "Inventory"))
+	box.add_child(_sidebar_nav_button("Dashboard", "UserInfo"))
+	box.add_child(_sidebar_nav_button("Inventory", "FullInventory"))
 
 	box.add_child(_spacer(12))
 	box.add_child(_section_label("Community"))
-	box.add_child(_sidebar_nav_button("Clan", "ActiveTask"))
-	box.add_child(_sidebar_nav_button("Local market", "Inventory"))
-	box.add_child(_sidebar_nav_button("Player market", "Inventory"))
+	box.add_child(_sidebar_placeholder_button("Clan"))
+	box.add_child(_sidebar_placeholder_button("Local market"))
+	box.add_child(_sidebar_placeholder_button("Player market"))
 
 	box.add_child(_spacer(12))
 	box.add_child(_section_label("Activities"))
@@ -280,6 +430,10 @@ func _build_crafting_card(root: Control):
 	production_scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	production_scrim.color = Color(0.0, 0.04, 0.05, 0.62)
 	production_scrim.visible = false
+	production_scrim.gui_input.connect(func(event):
+		if event is InputEventMouseButton and event.pressed:
+			_close_production_panel()
+	)
 	root.add_child(production_scrim)
 
 	production_panel = _panel("Crafting", Vector2(318, 90), Vector2(738, 1820), PANEL_BG)
@@ -291,6 +445,14 @@ func _build_crafting_card(root: Control):
 	production_title_label = _card_title("Smithing / Crafting")
 	production_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(production_title_label)
+	var close_btn = Button.new()
+	close_btn.text = "✕ Close"
+	close_btn.custom_minimum_size = Vector2(96, 42)
+	close_btn.add_theme_stylebox_override("normal", _style(Color(0.32, 0.10, 0.12, 0.95), 5))
+	close_btn.add_theme_stylebox_override("hover", _style(Color(0.48, 0.13, 0.16, 1.0), 5))
+	close_btn.add_theme_color_override("font_color", TEXT)
+	close_btn.pressed.connect(_close_production_panel)
+	header.add_child(close_btn)
 	box.add_child(header)
 
 	production_summary_label = _small_label("Choose a production discipline to inspect recipes by tier.")
@@ -367,11 +529,11 @@ func _on_activity_cycle_completed(_activity_id: String, reward_text: String):
 func _on_activity_button_pressed(activity_id: String):
 	GameData.start_activity(activity_id)
 	if activity_id == "smithing":
-		_focus_panel("Crafting")
-		_on_production_mode_pressed("smithing")
+		_focus_panel("ActiveTask")
+		_open_production_panel("smithing")
 	elif activity_id == "crafting":
-		_focus_panel("Crafting")
-		_on_production_mode_pressed("crafting")
+		_focus_panel("ActiveTask")
+		_open_production_panel("crafting")
 	else:
 		_focus_panel("ActiveTask")
 
@@ -385,8 +547,8 @@ func _refresh_activity_buttons():
 		btn.button_pressed = active
 		btn.add_theme_stylebox_override("normal", _style(ACCENT if active else PANEL_ROW, 4))
 
-const PARTY_PANELS = ["Adventurers", "Dungeons"]
-const MAIN_PANELS = ["UserInfo", "Skills", "ActiveTask", "Inventory", "Equipment", "Crafting"]
+const PARTY_PANELS = ["Adventurers", "Dungeons", "FullInventory"]
+const MAIN_PANELS = ["UserInfo", "Skills", "ActiveTask", "Inventory", "Equipment"]
 
 func _focus_panel(panel_name: String):
 	_close_production_panel()
@@ -406,6 +568,13 @@ func _focus_panel(panel_name: String):
 		if dashboard_panels.has(panel_name):
 			dashboard_panels[panel_name].visible = true
 			dashboard_panels[panel_name].move_to_front()
+		if party_panels_helper:
+			if panel_name == "Adventurers":
+				party_panels_helper._refresh_adventurers("")
+			elif panel_name == "Dungeons":
+				party_panels_helper._refresh_dungeons("")
+		if panel_name == "FullInventory":
+			_refresh_full_inventory()
 	else:
 		# Show all main dashboard panels
 		for key in MAIN_PANELS:
@@ -789,6 +958,18 @@ func _sidebar_nav_button(label: String, target_panel: String) -> Button:
 	btn.add_theme_stylebox_override("hover", _style(PANEL_ROW, 4))
 	btn.add_theme_color_override("font_color", TEXT)
 	btn.pressed.connect(_focus_panel.bind(target_panel))
+	return btn
+
+func _sidebar_placeholder_button(label: String) -> Button:
+	var btn = Button.new()
+	btn.text = label + "  (soon)"
+	btn.custom_minimum_size = Vector2(0, 44)
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.disabled = true
+	btn.add_theme_stylebox_override("normal", _style(Color(0, 0, 0, 0), 4))
+	btn.add_theme_stylebox_override("disabled", _style(Color(0, 0, 0, 0), 4))
+	btn.add_theme_color_override("font_color", MUTED)
+	btn.add_theme_color_override("font_disabled_color", Color(MUTED.r, MUTED.g, MUTED.b, 0.45))
 	return btn
 
 func _mini_button(label: String) -> Button:

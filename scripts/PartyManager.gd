@@ -231,7 +231,7 @@ const STAT_GROWTH = {
 
 func get_player_agility_bonus() -> float:
 	var agility_level := GameData.get_skill_level("agility")
-	return float(agility_level / 10) * 0.1
+	return (float(agility_level) / 10.0) * 0.1
 
 func get_player_hp_bonus() -> int:
 	var hp_level := GameData.get_skill_level("hitpoints")

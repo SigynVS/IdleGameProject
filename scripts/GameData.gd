@@ -423,6 +423,16 @@ func add_gold(amount: int):
 	save_game()
 	print("Gold: %d" % gold)
 
+func sell_item(item_name: String, amount: int) -> bool:
+	if not item_prices.has(item_name):
+		return false
+	if inventory.get(item_name, 0) < amount:
+		return false
+	var gain = item_prices[item_name] * amount
+	remove_item(item_name, amount)
+	add_gold(gain)
+	return true
+
 func sell_all_items():
 	"""Sell all sellable items in inventory for gold"""
 	var total_gain = 0

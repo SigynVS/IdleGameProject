@@ -35,8 +35,8 @@ func _ready():
 		PartyManager.dungeon_completed.connect(_on_dungeon_changed)
 		PartyManager.combat_log_updated.connect(_on_combat_log_updated)
 	
-	_refresh_adventurers("")
-	_refresh_dungeons("")
+	call_deferred("_refresh_adventurers", "")
+	call_deferred("_refresh_dungeons", "")
 	
 	# Refresh dungeons regularly for progress
 	var timer = Timer.new()
@@ -144,147 +144,213 @@ func _adventurer_card(adv_id: String) -> PanelContainer:
 	var card = PanelContainer.new()
 	card.set_meta("adventurer_id", adv_id)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.add_theme_stylebox_override("panel", _style(PANEL_ROW, 4))
-	
-	var box = VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
-	card.add_child(box)
-	
+	card.add_theme_stylebox_override("panel", _style(PANEL_ROW, 6))
+
 	var is_dead: bool = adv.get("dead", false)
-	
-	# Header
-	var header = HBoxContainer.new()
-	var class_icon = PartyManager.ADVENTURER_CLASSES[adv["class"]]["icon"]
-	var name_label = _body_label("%s %s (Lv.%d)" % [class_icon, adv["name"], PartyManager.level_from_xp(adv.get("xp", 0))])
-	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var xp: int = adv.get("xp", 0)
+	var current_level: int = PartyManager.level_from_xp(xp)
+	var scaled = PartyManager.get_scaled_stats(adv)
+	var total_atk = PartyManager.get_adventurer_total_attack(adv_id)
+	var total_def = PartyManager.get_adventurer_total_defence(adv_id)
+	var class_data = PartyManager.ADVENTURER_CLASSES[adv["class"]]
+
+	var outer = VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 8)
+	card.add_child(outer)
+
+	# ── Header row: portrait + identity ──────────────────────────────────────
+	var header_row = HBoxContainer.new()
+	header_row.add_theme_constant_override("separation", 12)
+	outer.add_child(header_row)
+
+	var portrait = PanelContainer.new()
+	portrait.custom_minimum_size = Vector2(72, 72)
+	portrait.add_theme_stylebox_override("panel", _style(Color(0.06, 0.10, 0.14, 1.0), 4))
+	var portrait_label = Label.new()
+	portrait_label.text = class_data["icon"]
+	portrait_label.add_theme_font_size_override("font_size", 38)
+	portrait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	portrait_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	portrait_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	portrait.add_child(portrait_label)
+	header_row.add_child(portrait)
+
+	var id_col = VBoxContainer.new()
+	id_col.add_theme_constant_override("separation", 4)
+	id_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_row.add_child(id_col)
+
+	var name_row = HBoxContainer.new()
+	var name_lbl = _body_label(adv["name"])
+	name_lbl.add_theme_font_size_override("font_size", 18)
+	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if is_dead:
-		name_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
-	header.add_child(name_label)
-	
+		name_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	name_row.add_child(name_lbl)
 	if is_dead:
 		var rez_time := PartyManager.get_prayer_rez_time()
-		var elapsed: float = adv.get("rez_elapsed", 0.0)
-		var remaining: float = max(0.0, rez_time - elapsed)
-		var dead_label = _small_label("💀 Rezzing in %.0fs" % remaining)
-		dead_label.add_theme_color_override("font_color", WARNING)
-		dead_label.autowrap_mode = 0
-		header.add_child(dead_label)
+		var remaining: float = max(0.0, rez_time - adv.get("rez_elapsed", 0.0))
+		var dead_lbl = _small_label("💀 Rezzing in %.0fs" % remaining)
+		dead_lbl.add_theme_color_override("font_color", WARNING)
+		dead_lbl.autowrap_mode = 0
+		name_row.add_child(dead_lbl)
 	else:
-		var status_text: String = "IN DUNGEON" if adv["assigned_dungeon"] != "" else "IDLE"
-		var status_label = _small_label(status_text)
-		var status_color: Color = WARNING if adv["assigned_dungeon"] != "" else ACCENT
-		status_label.add_theme_color_override("font_color", status_color)
-		status_label.autowrap_mode = 0
-		header.add_child(status_label)
-	box.add_child(header)
-	
-	# XP bar
-	var xp: int = adv.get("xp", 0)
-	var progress: float = PartyManager.xp_progress_in_level(xp)
+		var status_text = "IN DUNGEON" if adv["assigned_dungeon"] != "" else "IDLE"
+		var status_lbl = _small_label(status_text)
+		status_lbl.add_theme_color_override("font_color", WARNING if adv["assigned_dungeon"] != "" else ACCENT)
+		status_lbl.autowrap_mode = 0
+		name_row.add_child(status_lbl)
+	id_col.add_child(name_row)
+
+	id_col.add_child(_small_label("%s  •  Level %d / %d" % [class_data["name"], current_level, PartyManager.MAX_LEVEL]))
+
+	var xp_progress: float = PartyManager.xp_progress_in_level(xp)
 	var xp_remaining: int = PartyManager.xp_to_next_level(xp)
-	var current_level: int = PartyManager.level_from_xp(xp)
-	
-	var xp_row = HBoxContainer.new()
-	xp_row.add_theme_constant_override("separation", 8)
 	var xp_bar = ProgressBar.new()
 	xp_bar.min_value = 0
 	xp_bar.max_value = 100
-	xp_bar.value = progress * 100
+	xp_bar.value = xp_progress * 100
 	xp_bar.custom_minimum_size = Vector2(0, 10)
 	xp_bar.show_percentage = false
 	xp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	xp_row.add_child(xp_bar)
-	var xp_text: String
-	if current_level >= PartyManager.MAX_LEVEL:
-		xp_text = "MAX"
-	else:
-		xp_text = "%d XP to Lv.%d" % [xp_remaining, current_level + 1]
-	var xp_text_label = _small_label(xp_text)
-	xp_text_label.autowrap_mode = 0
-	xp_row.add_child(xp_text_label)
-	box.add_child(xp_row)
-	
-	# Stats (scaled by level)
-	var scaled = PartyManager.get_scaled_stats(adv)
-	var stats = _small_label("HP:%d | ATK:%d | DEF:%d" % [
-		scaled["hp"],
-		PartyManager.get_adventurer_total_attack(adv_id),
-		PartyManager.get_adventurer_total_defence(adv_id)
-	])
-	box.add_child(stats)
-	
-	# Abilities
+	var xp_fill = StyleBoxFlat.new()
+	xp_fill.bg_color = Color(0.56, 0.36, 0.86)
+	var xp_bg = StyleBoxFlat.new()
+	xp_bg.bg_color = Color(0.06, 0.06, 0.12)
+	xp_bar.add_theme_stylebox_override("fill", xp_fill)
+	xp_bar.add_theme_stylebox_override("background", xp_bg)
+	id_col.add_child(xp_bar)
+	var xp_text = "MAX" if current_level >= PartyManager.MAX_LEVEL else "Exp: %d / %d" % [xp, xp + xp_remaining]
+	id_col.add_child(_small_label(xp_text))
+
+	# ── Active / Passive skill boxes ──────────────────────────────────────────
 	var abilities: Array = adv.get("abilities", [])
-	if abilities.size() > 0:
-		var ability_label = _small_label("  ".join(abilities))
-		ability_label.add_theme_color_override("font_color", Color(0.80, 0.60, 1.0))
-		box.add_child(ability_label)
-	
-	# Equipment
-	var slots = ["weapon", "offhand", "helmet", "chest", "legs", "boots"]
+	var active_skill = abilities[-1] if abilities.size() > 0 else "None"
+	var passive_skill = abilities[-2] if abilities.size() > 1 else "None"
+	var ability_row = HBoxContainer.new()
+	ability_row.add_theme_constant_override("separation", 8)
+	outer.add_child(ability_row)
+	for pair in [["Active Skill", active_skill], ["Passive Skill", passive_skill]]:
+		var skill_box = PanelContainer.new()
+		skill_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		skill_box.add_theme_stylebox_override("panel", _style(Color(0.08, 0.20, 0.26, 1.0), 4))
+		var skill_inner = VBoxContainer.new()
+		skill_inner.add_theme_constant_override("separation", 2)
+		skill_box.add_child(skill_inner)
+		var type_lbl = _small_label(pair[0])
+		type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		skill_inner.add_child(type_lbl)
+		var name_l = _body_label(pair[1])
+		name_l.add_theme_font_size_override("font_size", 14)
+		name_l.add_theme_color_override("font_color", Color(0.80, 0.60, 1.0) if pair[1] != "None" else MUTED)
+		name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		skill_inner.add_child(name_l)
+		ability_row.add_child(skill_box)
+
+	# ── Stats grid ────────────────────────────────────────────────────────────
+	var stats_panel = PanelContainer.new()
+	stats_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_panel.add_theme_stylebox_override("panel", _style(Color(0.04, 0.14, 0.18, 1.0), 4))
+	outer.add_child(stats_panel)
+	var stats_grid = GridContainer.new()
+	stats_grid.columns = 2
+	stats_grid.add_theme_constant_override("h_separation", 24)
+	stats_grid.add_theme_constant_override("v_separation", 4)
+	stats_panel.add_child(stats_grid)
+	var class_attack_types = {"warrior": "Melee, Physical", "mage": "Ranged, Magical", "ranger": "Ranged, Physical", "cleric": "Melee, Holy"}
+	for pair in [
+		["HP", str(scaled["hp"])],
+		["Attack dmg", "%d - %d" % [total_atk, int(total_atk * 1.5)]],
+		["Constitution", str(int(scaled["hp"] * 0.2))],
+		["Defense", str(total_def)],
+		["Dexterity", str(current_level + int(total_def * 0.3))],
+		["Magic Defense", str(int(total_def * 0.7))],
+		["Intelligence", str(current_level)],
+		["Mana gain", str(current_level * 2)],
+		[class_attack_types.get(adv["class"], "Physical"), ""],
+	]:
+		var k = _small_label(pair[0])
+		k.autowrap_mode = 0
+		stats_grid.add_child(k)
+		var v = _small_label(pair[1])
+		v.add_theme_color_override("font_color", MUTED if pair[1] == "" else TEXT)
+		v.autowrap_mode = 0
+		stats_grid.add_child(v)
+
+	# ── Equipment slots ───────────────────────────────────────────────────────
+	var equip_lbl = _small_label("EQUIPMENT")
+	equip_lbl.add_theme_color_override("font_color", ACCENT)
+	equip_lbl.add_theme_font_size_override("font_size", 12)
+	outer.add_child(equip_lbl)
 	var equip_grid = GridContainer.new()
-	equip_grid.columns = 3
-	equip_grid.add_theme_constant_override("h_separation", 6)
+	equip_grid.columns = 2
+	equip_grid.add_theme_constant_override("h_separation", 8)
 	equip_grid.add_theme_constant_override("v_separation", 4)
 	equip_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_child(equip_grid)
-	
-	for slot in slots:
-		var slot_box = VBoxContainer.new()
-		slot_box.add_theme_constant_override("separation", 2)
-		slot_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		
-		var slot_label = _small_label(slot.capitalize())
-		slot_label.autowrap_mode = 0
-		slot_box.add_child(slot_label)
-		
+	outer.add_child(equip_grid)
+	for slot in ["weapon", "offhand", "helmet", "chest", "legs", "boots"]:
+		var slot_row = HBoxContainer.new()
+		slot_row.add_theme_constant_override("separation", 6)
+		slot_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		equip_grid.add_child(slot_row)
+		var slot_lbl = _small_label(slot.capitalize() + ":")
+		slot_lbl.custom_minimum_size = Vector2(56, 0)
+		slot_lbl.autowrap_mode = 0
+		slot_row.add_child(slot_lbl)
 		if adv["equipped"].has(slot):
 			var item = EquipmentData.get_item(adv["equipped"][slot])
-			var item_label = _small_label(item.get("name", "?"))
-			item_label.add_theme_color_override("font_color", ACCENT)
-			item_label.autowrap_mode = 0
-			slot_box.add_child(item_label)
-			
+			var item_lbl = _small_label(item.get("name", "?"))
+			item_lbl.add_theme_color_override("font_color", ACCENT)
+			item_lbl.autowrap_mode = 0
+			item_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			slot_row.add_child(item_lbl)
 			var unequip_btn = Button.new()
-			unequip_btn.text = "Unequip"
-			unequip_btn.custom_minimum_size = Vector2(0, 28)
+			unequip_btn.text = "✕"
+			unequip_btn.custom_minimum_size = Vector2(28, 24)
 			unequip_btn.add_theme_stylebox_override("normal", _style(WARNING, 3))
 			unequip_btn.add_theme_color_override("font_color", TEXT)
 			unequip_btn.add_theme_font_size_override("font_size", 11)
-			unequip_btn.pressed.connect(func():
-				PartyManager.unequip_adventurer(adv_id, slot)
-			)
-			slot_box.add_child(unequip_btn)
+			unequip_btn.pressed.connect(func(): PartyManager.unequip_adventurer(adv_id, slot))
+			slot_row.add_child(unequip_btn)
 		else:
-			# Find items in inventory that fit this slot
 			var available = []
 			for item_id in EquipmentData.get_items_for_slot(slot):
 				var item = EquipmentData.get_item(item_id)
-				var item_name = item.get("name", "")
-				if GameData.inventory.get(item_name, 0) > 0:
+				if GameData.inventory.get(item.get("name", ""), 0) > 0:
 					available.append(item_id)
-			
 			if available.size() > 0:
 				var equip_btn = OptionButton.new()
-				equip_btn.custom_minimum_size = Vector2(0, 28)
+				equip_btn.custom_minimum_size = Vector2(0, 24)
 				equip_btn.add_theme_font_size_override("font_size", 11)
+				equip_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				equip_btn.add_item("Equip...")
 				for item_id in available:
-					var item = EquipmentData.get_item(item_id)
-					equip_btn.add_item(item.get("name", item_id))
+					equip_btn.add_item(EquipmentData.get_item(item_id).get("name", item_id))
 				equip_btn.item_selected.connect(func(idx: int):
-					if idx == 0:
-						return
+					if idx == 0: return
 					PartyManager.equip_adventurer(adv_id, available[idx - 1])
 				)
-				slot_box.add_child(equip_btn)
+				slot_row.add_child(equip_btn)
 			else:
-				var empty_label = _small_label("Empty")
-				empty_label.autowrap_mode = 0
-				slot_box.add_child(empty_label)
-		
-		equip_grid.add_child(slot_box)
-	
+				var empty_lbl = _small_label("Empty")
+				empty_lbl.autowrap_mode = 0
+				empty_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				slot_row.add_child(empty_lbl)
+
+	# ── Description ───────────────────────────────────────────────────────────
+	var class_descriptions = {
+		"warrior": "A battle-hardened fighter clad in heavy armor, built to take punishment and hold the front line.",
+		"mage": "A wielder of arcane forces, fragile but devastatingly powerful at range.",
+		"ranger": "A swift hunter skilled in ranged combat and evasion, striking from the shadows.",
+		"cleric": "A holy healer who supports allies and smites enemies with divine power.",
+	}
+	var desc_panel = PanelContainer.new()
+	desc_panel.add_theme_stylebox_override("panel", _style(Color(0.06, 0.10, 0.14, 0.8), 4))
+	outer.add_child(desc_panel)
+	var desc_lbl = _small_label(class_descriptions.get(adv["class"], ""))
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_panel.add_child(desc_lbl)
+
 	return card
 
 func _refresh_dungeons(_dungeon_id):
@@ -394,53 +460,63 @@ func _dungeon_visual_card(dungeon_id: String) -> PanelContainer:
 		else:
 			cycle_text = "Tier %d | Cycles: %d | Next tier: %d" % [current_tier + 1, total_cycles, next_tier_cycles]
 		info_box.add_child(_body_label(cycle_text))
-		
+
+		# ── Side-by-side: loot left, combat log right ─────────────────────────
+		var columns = HBoxContainer.new()
+		columns.add_theme_constant_override("separation", 12)
+		columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		info_box.add_child(columns)
+
+		# Left — Loot
+		var loot_col = VBoxContainer.new()
+		loot_col.add_theme_constant_override("separation", 4)
+		loot_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		loot_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		columns.add_child(loot_col)
+
+		var loot_hdr = _small_label("LOOT COLLECTED")
+		loot_hdr.add_theme_color_override("font_color", ACCENT)
+		loot_col.add_child(loot_hdr)
+
 		if state["accumulated_loot"].size() > 0:
-			var loot_header = _body_label("Loot collected:")
-			loot_header.add_theme_color_override("font_color", ACCENT)
-			info_box.add_child(loot_header)
-			
-			var loot_grid = GridContainer.new()
-			loot_grid.columns = 3
-			loot_grid.add_theme_constant_override("h_separation", 12)
-			loot_grid.add_theme_constant_override("v_separation", 4)
-			loot_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			
 			for item_name in state["accumulated_loot"].keys():
 				var amount = state["accumulated_loot"][item_name]
-				var loot_label = _small_label("%s x%d" % [item_name, amount])
-				loot_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				loot_grid.add_child(loot_label)
-			
-			info_box.add_child(loot_grid)
+				var loot_lbl = _small_label("%s x%d" % [item_name, amount])
+				loot_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				loot_col.add_child(loot_lbl)
 		else:
-			info_box.add_child(_small_label("No loot yet..."))
-		
-		# Combat log
-		var log_header = _section_label("Combat Log")
-		log_header.add_theme_font_size_override("font_size", 14)
-		info_box.add_child(log_header)
-		
+			loot_col.add_child(_small_label("Nothing yet..."))
+
+		# Right — Combat log
+		var log_col = VBoxContainer.new()
+		log_col.add_theme_constant_override("separation", 4)
+		log_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		log_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		columns.add_child(log_col)
+
+		var log_hdr = _small_label("COMBAT LOG")
+		log_hdr.add_theme_color_override("font_color", Color(0.96, 0.86, 0.36))
+		log_col.add_child(log_hdr)
+
 		var log_scroll = ScrollContainer.new()
-		log_scroll.custom_minimum_size = Vector2(0, 120)
+		log_scroll.custom_minimum_size = Vector2(0, 140)
 		log_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		log_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info_box.add_child(log_scroll)
-		
+		log_col.add_child(log_scroll)
+
 		var log_box = VBoxContainer.new()
 		log_box.name = "CombatLog_" + dungeon_id
 		log_box.add_theme_constant_override("separation", 2)
 		log_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		log_scroll.add_child(log_box)
-		
-		# Populate log
-		var combat_log = PartyManager.get_combat_log(dungeon_id)
-		for entry in combat_log:
+
+		for entry in PartyManager.get_combat_log(dungeon_id):
 			var log_label = _small_label(entry["message"])
 			log_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			log_label.add_theme_color_override("font_color", LOG_COLORS.get(entry["color"], Color.WHITE))
 			log_box.add_child(log_label)
-		
+
 		# Stop button
 		var stop_btn = Button.new()
 		stop_btn.text = "🛑 Stop & Collect Loot"
@@ -448,7 +524,7 @@ func _dungeon_visual_card(dungeon_id: String) -> PanelContainer:
 		stop_btn.add_theme_stylebox_override("normal", _style(WARNING, 4))
 		stop_btn.add_theme_stylebox_override("hover", _style(Color(0.72, 0.20, 0.20), 4))
 		stop_btn.add_theme_color_override("font_color", TEXT)
-		stop_btn.pressed.connect(func(): 
+		stop_btn.pressed.connect(func():
 			PartyManager.stop_dungeon(dungeon_id)
 		)
 		info_box.add_child(stop_btn)
