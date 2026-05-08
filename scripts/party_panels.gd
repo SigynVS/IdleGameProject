@@ -165,14 +165,31 @@ func _adventurer_card(adv_id: String) -> PanelContainer:
 
 	var portrait = PanelContainer.new()
 	portrait.custom_minimum_size = Vector2(72, 72)
+	portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	portrait.add_theme_stylebox_override("panel", _style(Color(0.06, 0.10, 0.14, 1.0), 4))
-	var portrait_label = Label.new()
-	portrait_label.text = class_data["icon"]
-	portrait_label.add_theme_font_size_override("font_size", 38)
-	portrait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	portrait_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	portrait_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	portrait.add_child(portrait_label)
+	var portrait_img = TextureRect.new()
+	portrait_img.custom_minimum_size = Vector2(72, 72)
+	portrait_img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait_img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var portrait_map = {
+		"warrior": "res://assets/Characters/Character - 128 x 128/character_002.png",
+		"mage":    "res://assets/Characters/Character - 128 x 128/character_022.png",
+		"rogue":   "res://assets/Characters/Character - 128 x 128/character_020.png",
+		"ranger":  "res://assets/Characters/Character - 128 x 128/character_009.png",
+		"cleric":  "res://assets/Characters/Character - 128 x 128/character_010.png",
+	}
+	var portrait_path = portrait_map.get(adv["class"], "")
+	if portrait_path != "" and ResourceLoader.exists(portrait_path):
+		portrait_img.texture = load(portrait_path)
+	else:
+		var portrait_label = Label.new()
+		portrait_label.text = class_data["icon"]
+		portrait_label.add_theme_font_size_override("font_size", 38)
+		portrait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		portrait_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		portrait_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+		portrait.add_child(portrait_label)
+	portrait.add_child(portrait_img)
 	header_row.add_child(portrait)
 
 	var id_col = VBoxContainer.new()
@@ -382,9 +399,28 @@ func _dungeon_visual_card(dungeon_id: String) -> PanelContainer:
 	# ─── DUNGEON BACKGROUND ───
 	var bg = ColorRect.new()
 	bg.custom_minimum_size = Vector2(0, 200)
+	bg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bg.color = Color(dungeon.get("bg_color", "#333333"))
 	main_box.add_child(bg)
-	
+
+	# Dungeon scene background
+	var bg_map = {
+		"forest":      "res://assets/Backgrounds/dungeon_forest.png",
+		"desert":      "res://assets/Backgrounds/dungeon_desert.png",
+		"battlefield": "res://assets/Backgrounds/dungeon_battlefield.png",
+	}
+	var bg_path = bg_map.get(dungeon_id, "")
+	if bg_path != "" and ResourceLoader.exists(bg_path):
+		var bg_img = TextureRect.new()
+		bg_img.texture = load(bg_path)
+		bg_img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		bg_img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		bg_img.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bg_img.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		bg_img.modulate = Color(1, 1, 1, 0.55)
+		bg_img.set_anchors_preset(Control.PRESET_FULL_RECT)
+		bg.add_child(bg_img)
+
 	# Background content
 	var bg_content = VBoxContainer.new()
 	bg_content.add_theme_constant_override("separation", 8)
